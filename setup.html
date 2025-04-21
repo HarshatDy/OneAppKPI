@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5G NR Monitoring Setup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+        }
+        .page-container {
+            display: flex;
+            width: 900px;
+            gap: 20px;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            flex: 1;
+            min-height: 400px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 2s linear infinite;
+            margin: 10px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo img {
+            max-width: 200px;
+        }
+        #ip-form {
+            margin-top: 20px;
+        }
+        .hidden-iframe {
+            display: none;
+        }
+        
+        /* New Styles for Active Sessions */
+        .sessions-list {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .session-item {
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .session-item:hover {
+            background-color: #f0f0f0;
+        }
+        .session-ip {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .session-info {
+            color: #666;
+            font-size: 14px;
+        }
+        .session-actions {
+            display: flex;
+            margin-top: 10px;
+            gap: 10px;
+        }
+        .view-btn {
+            background-color: #3498db;
+            flex: 1;
+        }
+        .view-btn:hover {
+            background-color: #2980b9;
+        }
+        .end-btn {
+            background-color: #e74c3c;
+            flex: 1;
+        }
+        .end-btn:hover {
+            background-color: #c0392b;
+        }
+        .no-sessions {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+            font-style: italic;
+        }
+        .refresh-btn {
+            background-color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+        .refresh-btn:hover {
+            background-color: #6c7a7d;
+        }
+        .tooltip {
+            position: relative;
+            cursor: help;
+            margin-left: 5px;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            font-weight: normal;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <div class="container">
+            <div class="logo">
+                <h2>5G NR Monitoring</h2>
+            </div>
+            <h1>Setup Connection</h1>
+            
+            <div id="ip-form">
+                <div class="form-group">
+                    <label for="ip-address">Enter Server IP Address:</label>
+                    <input type="text" id="ip-address" name="ip" placeholder="e.g., 172.27.186.2" required>
+                </div>
+                
+                <button type="button" id="submit-btn" onclick="startMonitoring()">Start Monitoring</button>
+            </div>
+            
+            <div class="loader" id="loader"></div>
+            <div class="status" id="status-message"></div>
+        </div>
+        
+        <div class="container">
+            <h1>Active Sessions</h1>
+            <button type="button" class="refresh-btn" onclick="loadActiveSessions()">Refresh Sessions</button>
+            
+            <div id="sessions-list" class="sessions-list">
+                <div class="no-sessions">No active monitoring sessions found</div>
+            </div>
+        </div>
+    </div>
+    
+    <iframe id="hidden-frame" name="hidden-frame" class="hidden-iframe"></iframe>
+    
+    <script>
+        // This function runs when the page loads to make sure the server is running
+        window.onload = function() {
+            // Try to ping the server to see if it's running
+            var img = new Image();
+            img.onload = function() {
+                console.log("Server is running");
+                // Load active sessions once the server is confirmed running
+                loadActiveSessions();
+            };
+            img.onerror = function() {
+                console.log("Server might not be running");
+                showMessage("Server might not be running. Please restart the setup application.", "error");
+            };
+            // Add a timestamp to prevent caching
+            img.src = "http://localhost:8080/ping?" + new Date().getTime();
+        };
+
+        function startMonitoring() {
+            const ipAddress = document.getElementById('ip-address').value;
+            
+            // Basic IP validation
+            const ipPattern = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+            if (!ipPattern.test(ipAddress)) {
+                showMessage("Please enter a valid IP address", "error");
+                return;
+            }
+            
+            // Show loader
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('submit-btn').disabled = true;
+            document.getElementById('status-message').style.display = 'none';
+            
+            // Instead of using fetch, we'll use a form submission to a server endpoint
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'http://localhost:8080/setup';
+            form.target = 'hidden-frame'; // Submit to the hidden iframe
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'ip';
+            input.value = ipAddress;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            
+            // Setup the iframe callback
+            document.getElementById('hidden-frame').onload = function() {
+                try {
+                    // Try to access the iframe content
+                    const iframeContent = document.getElementById('hidden-frame').contentWindow.document.body.innerHTML;
+                    
+                    // Try to parse the JSON response
+                    try {
+                        const response = JSON.parse(iframeContent);
+                        
+                        if (response.success === true) {
+                            showMessage('Connection successful! Monitoring service is now running.', 'success');
+                            // Reload active sessions after starting a new one
+                            setTimeout(loadActiveSessions, 2000);
+                        } else {
+                            // Check if this is specifically a procmon inactive error
+                            if (response.procmon_active === false) {
+                                showMessage('PROCMON is inactive on the server. Cannot initiate KPI tracking. Please ensure procmon service is running.', 'error');
+                            } else {
+                                showMessage(response.message || 'Error setting up connection. Please try again.', 'error');
+                            }
+                        }
+                    } catch (jsonError) {
+                        // Improved fallback for non-JSON responses - check for specific text patterns
+                        if (iframeContent.includes('"success":true') || 
+                            (iframeContent.includes('success') && !iframeContent.includes('false') && !iframeContent.includes('inactive'))) {
+                            showMessage('Connection successful! Monitoring service is now running.', 'success');
+                            // Reload active sessions after starting a new one
+                            setTimeout(loadActiveSessions, 2000);
+                        } else if (iframeContent.includes('PROCMON: INACTIVE') || 
+                                   iframeContent.includes('procmon is not active') || 
+                                   iframeContent.includes('PROCMON IS DOWN') ||
+                                   iframeContent.includes('"procmon_active":false')) {
+                            showMessage('PROCMON is inactive on the server. Cannot initiate KPI tracking. Please ensure procmon service is running.', 'error');
+                        } else {
+                            showMessage('Error setting up connection. Please try again.', 'error');
+                        }
+                    }
+                } catch (error) {
+                    // If we can't access the iframe content due to CORS
+                    // We can't reliably determine the status, so we'll just show a generic message
+                    showMessage('Request sent. If successful, the monitoring service will start shortly.', 'success');
+                    // Try to refresh sessions after a delay
+                    setTimeout(loadActiveSessions, 2000);
+                }
+                
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('submit-btn').disabled = false;
+            };
+            
+            // Submit the form
+            form.submit();
+            document.body.removeChild(form);
+        }
+        
+        function showMessage(message, type) {
+            const statusMsg = document.getElementById('status-message');
+            statusMsg.style.display = 'block';
+            statusMsg.className = 'status ' + type;
+            statusMsg.innerHTML = message;
+        }
+        
+        function loadActiveSessions() {
+            // Show a small loader or indication that we're fetching sessions
+            const sessionsList = document.getElementById('sessions-list');
+            sessionsList.innerHTML = '<div class="loader" style="display:block;"></div>';
+            
+            // Make a request to get active sessions
+            fetch('http://localhost:8080/active_sessions')
+                .then(response => response.json())
+                .then(data => {
+                    displayActiveSessions(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching active sessions:', error);
+                    sessionsList.innerHTML = '<div class="no-sessions">Error loading active sessions. Please try refreshing.</div>';
+                });
+        }
+        
+        function displayActiveSessions(sessions) {
+            const sessionsList = document.getElementById('sessions-list');
+            sessionsList.innerHTML = '';
+            
+            if (Object.keys(sessions).length === 0) {
+                sessionsList.innerHTML = '<div class="no-sessions">No active monitoring sessions found</div>';
+                return;
+            }
+            
+            // Sort sessions by start time (newest first)
+            const sortedSessions = Object.entries(sessions).sort((a, b) => {
+                return new Date(b[1].started_at) - new Date(a[1].started_at);
+            });
+            
+            for (const [ip, session] of sortedSessions) {
+                const sessionItem = document.createElement('div');
+                sessionItem.className = 'session-item';
+                
+                // Format the started_at time to be more readable
+                const startedDate = new Date(session.started_at);
+                const formattedDate = startedDate.toLocaleString();
+                
+                // Create clean IP for URL
+                const cleanIp = ip.replace(/\./g, '_');
+                
+                sessionItem.innerHTML = `
+                    <div class="session-ip">${ip} <span class="tooltip">?<span class="tooltiptext">PID: ${session.pid}</span></span></div>
+                    <div class="session-info">Started: ${formattedDate}</div>
+                    <div class="session-actions">
+                        <button class="view-btn" onclick="viewSession('${cleanIp}')">View Dashboard</button>
+                        <button class="end-btn" onclick="endSession('${ip}', ${session.pid})">End Session</button>
+                    </div>
+                `;
+                
+                sessionsList.appendChild(sessionItem);
+            }
+        }
+        
+        function viewSession(cleanIp) {
+            // Open the dashboard for this session in a new tab
+            window.open(`http://localhost:8000/${cleanIp}/cell_throughput_chart_${cleanIp}.html`, '_blank');
+        }
+        
+        function endSession(ip, pid) {
+            if (!confirm(`Are you sure you want to end the monitoring session for ${ip}?`)) {
+                return;
+            }
+            
+            // Make a request to terminate the session
+            fetch('http://localhost:8080/end_session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ip: ip,
+                    pid: pid
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(`Successfully ended monitoring session for ${ip}`, 'success');
+                    loadActiveSessions(); // Refresh the sessions list
+                } else {
+                    showMessage(`Failed to end session: ${data.message}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error ending session:', error);
+                showMessage('Error communicating with server. Please try again.', 'error');
+            });
+        }
+    </script>
+</body>
+</html>
