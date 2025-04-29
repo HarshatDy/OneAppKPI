@@ -11,6 +11,25 @@ import webbrowser
 import time
 import sys
 
+def get_server_url():
+    """Returns the actual server URL that should be used for connections"""
+    try:
+        # Get hostname or IP address dynamically
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 53))  # Doesn't need to be reachable
+        local_ip = s.getsockname()[0]
+        s.close()
+        return f"http://{local_ip}:{PORT}"
+    except:
+        # Fallback to hostname
+        try:
+            hostname = socket.gethostname()
+            local_ip = socket.gethostbyname(hostname)
+            return f"http://{local_ip}:{PORT}"
+        except:
+            # Ultimate fallback
+            return f"http://localhost:{PORT}"
+
 # Import functions from SIT_SERVER_SPACE.py
 try:
     from SIT_SERVER_SPACE import ssh_login, bash_command
@@ -28,12 +47,68 @@ except ImportError as e:
 
 # Default port for the setup server
 PORT = 8080
+# Add this constant at the top of the file where PORT is defined
+DASHBOARD_PATH = "/dashboard"  # New path prefix for dashboard content
 # Flag to track if browser has been opened
 BROWSER_OPENED = False
 
 class SetupRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        """Serve the setup HTML page"""
+        """Serve the setup HTML page and dashboard content"""
+        
+        # Handle dashboard requests
+        if self.path.startswith(DASHBOARD_PATH):
+            # Extract the path after /dashboard
+            dashboard_file_path = self.path[len(DASHBOARD_PATH):]
+            
+            # Strip query parameters (anything after ?)
+            if '?' in dashboard_file_path:
+                dashboard_file_path = dashboard_file_path.split('?')[0]
+            
+            # Clean up the path
+            dashboard_file_path = dashboard_file_path.lstrip('/')
+            
+            # Construct the absolute file path using os.path.join for proper slashes
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(script_dir, dashboard_file_path)
+            
+            print(f"[DEBUG] Looking for dashboard file: {file_path}")
+            
+            # Check if file exists
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                # Determine content type
+                content_type = 'application/json' if file_path.endswith('.json') else 'text/html'
+                
+                try:
+                    with open(file_path, 'rb') as f:
+                        content = f.read()
+                    
+                    self.send_response(200)
+                    self.send_header('Content-Type', content_type)
+                    self.send_header('Content-Length', str(len(content)))
+                    self.send_cors_headers()
+                    self.end_headers()
+                    self.wfile.write(content)
+                    return
+                except Exception as e:
+                    print(f"[ERROR] Error reading file {file_path}: {str(e)}")
+            else:
+                # If JSON file is requested but doesn't exist, return empty JSON object
+                if dashboard_file_path.endswith('.json'):
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_cors_headers()
+                    self.end_headers()
+                    self.wfile.write(b'{}')
+                    return
+                else:
+                    print(f"[ERROR] Dashboard file not found: {file_path}")
+                    self.send_response(404)
+                    self.send_header('Content-Type', 'text/html')
+                    self.end_headers()
+                    self.wfile.write(b'<html><body>Dashboard file not found</body></html>')
+                    return
+        
         # Handle ping request
         if self.path.startswith('/ping'):
             self.send_response(200)
@@ -551,6 +626,48 @@ class SetupRequestHandler(http.server.SimpleHTTPRequestHandler):
             print(f"[ERROR] Error ending monitoring session: {str(e)}")
             return {'success': False, 'message': f'Server error: {str(e)}'}
 
+    # Add this function to SetupRequestHandler class
+    def ensure_data_dirs_exist(self, ip_address):
+        """Makes sure the IP-specific directory exists and contains empty data files"""
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            clean_ip = ip_address.replace('.', '_')
+            ip_dir = os.path.join(script_dir, clean_ip)
+            
+            # Create directory if it doesn't exist
+            if not os.path.exists(ip_dir):
+                os.makedirs(ip_dir)
+                print(f"[INFO] Created directory for IP {ip_address}: {ip_dir}")
+            
+            # List of JSON files to ensure exist in the IP directory
+            required_files = [
+                f"procmon_status_{clean_ip}.json",
+                f"cell_info_{clean_ip}.json",
+                f"cell_selection_{clean_ip}.json",
+                f"ue_info_{clean_ip}.json",
+                f"ue_selection_{clean_ip}.json",
+                f"du_chart_data_{clean_ip}.json",
+                f"l1_chart_data_{clean_ip}.json",
+                f"la_chart_data_{clean_ip}.json",
+                f"ue_chart_data_{clean_ip}.json",
+                f"error_logs_{clean_ip}.json",
+                f"server_info_{clean_ip}.json",
+                f"ue_count_{clean_ip}.json"
+            ]
+            
+            # Initialize each file if it doesn't exist
+            for file_name in required_files:
+                file_path = os.path.join(ip_dir, file_name)
+                if not os.path.exists(file_path):
+                    with open(file_path, 'w') as f:
+                        f.write('{}')
+                    print(f"[INFO] Initialized empty file: {file_path}")
+                    
+            return True
+        except Exception as e:
+            print(f"[ERROR] Failed to ensure data directories exist: {str(e)}")
+            return False
+
 def main():
     """Main function that runs the setup server"""
     global BROWSER_OPENED
@@ -597,9 +714,16 @@ def main():
     while retry_count < max_retries:
         try:
             handler = SetupRequestHandler
-            httpd = socketserver.TCPServer(("", PORT), handler)
+            # Bind to all interfaces (0.0.0.0) instead of just localhost
+            httpd = socketserver.TCPServer(("0.0.0.0", PORT), handler)
             
-            print(f"[INFO] Server running at http://localhost:{PORT}")
+            # Get the actual server IP address for display purposes
+            hostname = socket.gethostname()
+            server_ip = socket.gethostbyname(hostname)
+            
+            print(f"[INFO] Server running at:")
+            print(f"  - Local URL: http://localhost:{PORT}")
+            print(f"  - Network URL: http://{server_ip}:{PORT}")
             
             # Make sure the server is ready before opening the browser
             def server_ready_check():

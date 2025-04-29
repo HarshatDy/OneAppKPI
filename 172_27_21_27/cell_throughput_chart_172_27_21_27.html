@@ -1,0 +1,2421 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <title>Cell Throughput Monitoring</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        
+        /* Tab styling */
+        .tab-container {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .tab-button {
+            background-color: #f1f1f1;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+            margin-right: 5px;
+            outline: none;
+        }
+        
+        .tab-button.active {
+            background-color: #fff;
+            border-bottom: 2px solid white;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 0 5px 5px 5px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        #debug-info {
+            text-align: left;
+            margin-top: 20px;
+            font-family: monospace;
+            border: 1px solid #ccc;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        /* Current value display styling */
+        .current-values {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .value-box {
+            display: inline-block;
+            margin-right: 30px;
+            padding: 10px;
+            border-radius: 4px;
+            min-width: 120px;
+            text-align: center;
+        }
+        
+        .value-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .value-number {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .units {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .dl-value {
+            background-color: #e6f2ff; /* light blue */
+            border: 1px solid #99ccff;
+        }
+        
+        .ul-value {
+            background-color: #e6ffe6; /* light green */
+            border: 1px solid #99ff99;
+        }
+        
+        .bler-value {
+            background-color: #ffe6ff; /* light purple */
+            border: 1px solid #ff99ff;
+        }
+        
+        /* Add styles for timestamp display */
+        .timestamp {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            color: #555;
+            text-align: center;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        /* Status indicator styles */
+        .status-indicator {
+            position: fixed;
+            top: 10px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .status-up {
+            background-color: #4CAF50;
+            color: white;
+            border: 1px solid #2E7D32;
+        }
+        
+        .status-down {
+            background-color: #F44336;
+            color: white;
+            border: 1px solid #B71C1C;
+        }
+        
+        .status-unknown {
+            background-color: #FFC107;
+            color: black;
+            border: 1px solid #FF8F00;
+        }
+        
+        /* LA metrics styling */
+        .la-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .la-metric-card {
+            background-color: #f8f8f8;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .la-metric-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        
+        .la-metric-value {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        
+        .dl-metric {
+            background-color: #e6f2ff;
+            border: 1px solid #99ccff;
+        }
+        
+        .ul-metric {
+            background-color: #e6ffe6;
+            border: 1px solid #99ff99;
+        }
+        
+        /* Split view for side-by-side charts */
+        .chart-row {
+            display: flex;
+            margin-bottom: 30px;
+            gap: 20px;
+        }
+        
+        .chart-column {
+            flex: 1;
+        }
+        
+        .chart-container {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 25px 0 15px 0;
+            padding: 8px 15px;
+            background-color: #f8f8f8;
+            border-left: 5px solid #4CAF50;
+            border-radius: 3px;
+        }
+        
+        .metrics-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        /* Updated LA metrics styling */
+        .metrics-section {
+            margin-bottom: 30px;
+        }
+        
+        .metrics-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            background-color: #f0f0f0;
+            border-radius: 3px;
+        }
+        
+        .dl-section {
+            border-left: 4px solid #99ccff;
+        }
+        
+        .ul-section {
+            border-left: 4px solid #99ff99;
+        }
+        
+        /* Crosshair tooltip styling */
+        .crosshair-tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            max-width: 300px;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .tooltip-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            padding-bottom: 4px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .tooltip-value {
+            margin: 4px 0;
+        }
+        
+        .tooltip-section {
+            margin-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            padding-top: 6px;
+        }
+        
+        .tooltip-label {
+            color: rgba(255,255,255,0.8);
+            display: inline-block;
+            width: 120px;
+        }
+        
+        .tooltip-number {
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .tooltip-dl {
+            color: #99ccff;
+        }
+        
+        .tooltip-ul {
+            color: #99ff99;
+        }
+        
+        .tooltip-bler {
+            color: #ff99ff;
+        }
+        
+        /* OGNB ERR Logs styling */
+        .error-logs-container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f8f8f8;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .error-logs {
+            height: 500px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .error-logs pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .error-entry {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px dotted #ccc;
+        }
+        
+        .error-timestamp {
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .error-level {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin: 0 5px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .error-level-ERR {
+            background-color: #f44336;
+        }
+        
+        .error-level-WARN {
+            background-color: #ff9800;
+        }
+        
+        .error-source {
+            display: inline-block;
+            padding: 2px 6px;
+            background-color: #2196F3;
+            color: white;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        
+        .log-source-toggle {
+            margin-bottom: 15px;
+        }
+        
+        .log-source-toggle button {
+            padding: 8px 15px;
+            margin-right: 10px;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .log-source-toggle button.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #2E7D32;
+        }
+        
+        .logs-last-update {
+            text-align: right;
+            font-style: italic;
+            color: #666;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        /* Server details styling */
+        .server-info-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .server-info-card {
+            flex: 1;
+            min-width: 300px;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .server-info-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .server-info-item {
+            display: flex;
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .server-info-item:nth-child(odd) {
+            background-color: #f0f0f0;
+        }
+        
+        .server-info-label {
+            font-weight: bold;
+            width: 180px;
+            color: #555;
+        }
+        
+        .server-info-value {
+            flex: 1;
+        }
+        
+        .server-detail-section {
+            margin-bottom: 20px;
+        }
+        
+        .system-info-highlight {
+            background-color: #e6f7ff;
+            border-left: 3px solid #1890ff;
+        }
+        
+        /* Cell selector styling */
+        .cell-selector-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            background-color: #f8f8f8;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            flex-wrap: wrap;
+        }
+        
+        .cell-selector-label {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #333;
+        }
+        
+        .cell-selector {
+            padding: 8px 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: white;
+            font-size: 14px;
+            min-width: 120px;
+            cursor: pointer;
+        }
+        
+        .ue-counter {
+            margin-left: 20px;
+            display: flex;
+            align-items: center;
+            background-color: #e6f7ff;
+            padding: 8px 15px;
+            border-radius: 4px;
+            border-left: 3px solid #1890ff;
+        }
+        
+        .ue-counter-label {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #333;
+        }
+        
+        .ue-counter-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1890ff;
+        }
+        
+        /* UE selector styling */
+        .ue-selector-container {
+            margin-left: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .ue-selector-label {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #333;
+        }
+        
+        .ue-selector {
+            padding: 8px 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: white;
+            font-size: 14px;
+            min-width: 120px;
+            cursor: pointer;
+        }
+        
+        /* UE specific metrics table */
+        .ue-metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .ue-metrics-table th {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+        
+        .ue-metrics-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .ue-metrics-table tr:nth-child(even) {
+            background-color: #f0f0f0;
+        }
+        
+        .ue-metrics-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* No UE message styling */
+        .no-ue-message {
+            text-align: center;
+            padding: 30px;
+            font-size: 18px;
+            color: #666;
+            background-color: #f8f8f8;
+            border: 1px dashed #ddd;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cell Throughput Monitoring</h1>
+    
+    <!-- Add procmon status indicator -->
+    <div id="procmon-status" class="status-indicator status-unknown">PROCMON: UNKNOWN</div>
+    
+    <div class="tab-container">
+        <button class="tab-button active" onclick="openTab('combined-tab')">DU & LA Statistics</button>
+        <button class="tab-button" onclick="openTab('l1-tab')">L1 Statistics (MU 1)</button>
+        <button class="tab-button" onclick="openTab('err-tab')">OGNB ERR Logs</button>
+        <button class="tab-button" onclick="openTab('server-tab')">Server Details</button>
+    </div>
+    
+    <div id="combined-tab" class="tab-content active">
+        <!-- Add cell selector dropdown -->
+        <div class="cell-selector-container">
+            <span class="cell-selector-label">Select Cell:</span>
+            <select id="cell-selector" class="cell-selector" onchange="cellSelectionChanged()">
+                <!-- Options will be populated dynamically -->
+                <option value="">Loading cells...</option>
+            </select>
+            
+            <!-- Add UE counter -->
+            <div class="ue-counter">
+                <span class="ue-counter-label">Connected UEs:</span>
+                <span id="ue-counter-value" class="ue-counter-value">0</span>
+            </div>
+            
+            <!-- Add UE selector dropdown -->
+            <div class="ue-selector-container">
+                <span class="ue-selector-label">Select UE (CRNTI):</span>
+                <select id="ue-selector" class="ue-selector" onchange="ueSelectionChanged()">
+                    <option value="">No UEs Available</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Combined values section for both DU TPT and LA Histogram metrics -->
+        <div class="section-title">DU Cell Throughput</div>
+        <div class="metrics-container">
+            <div class="value-box dl-value">
+                <div class="value-title">Downlink Throughput</div>
+                <div id="du-dl-current" class="value-number">0</div>
+                <div class="units">Mbps</div>
+            </div>
+            <div class="value-box ul-value">
+                <div class="value-title">Uplink Throughput</div>
+                <div id="du-ul-current" class="value-number">0</div>
+                <div class="units">Mbps</div>
+            </div>
+        </div>
+        
+        <!-- Combined timestamp display -->
+        <div id="du-timestamp" class="timestamp">UpTime: 0 sec</div>
+        
+        <!-- Side-by-side DU charts -->
+        <div class="chart-row">
+            <div class="chart-column">
+                <div class="chart-container" id="du-dl-chart" style="height: 400px; width: 100%;"></div>
+            </div>
+            <div class="chart-column">
+                <div class="chart-container" id="du-ul-chart" style="height: 400px; width: 100%;"></div>
+            </div>
+        </div>
+        
+        <!-- LA Histogram metrics section -->
+        <div class="section-title">LA Histogram Statistics</div>
+        
+        <!-- Downlink LA metrics -->
+        <div class="metrics-section">
+            <div class="metrics-title dl-section">Downlink Link Adaptation Metrics</div>
+            <div class="metrics-container">
+                <div class="value-box dl-metric">
+                    <div class="value-title">DL CQI</div>
+                    <div id="la-dl-cqi" class="value-number">0</div>
+                </div>
+                <div class="value-box dl-metric">
+                    <div class="value-title">DL MCS</div>
+                    <div id="la-dl-mcs" class="value-number">0</div>
+                </div>
+                <div class="value-box dl-metric">
+                    <div class="value-title">DL Rank</div>
+                    <div id="la-dl-ri" class="value-number">0</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Uplink LA metrics -->
+        <div class="metrics-section">
+            <div class="metrics-title ul-section">Uplink Link Adaptation Metrics</div>
+            <div class="metrics-container">
+                <div class="value-box ul-metric">
+                    <div class="value-title">UL SNR</div>
+                    <div id="la-ul-snr" class="value-number">0</div>
+                    <div class="units">dB</div>
+                </div>
+                <div class="value-box ul-metric">
+                    <div class="value-title">UL MCS</div>
+                    <div id="la-ul-mcs" class="value-number">0</div>
+                </div>
+                <div class="value-box ul-metric">
+                    <div class="value-title">UL Rank</div>
+                    <div id="la-ul-ri" class="value-number">0</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Side-by-side DL LA charts -->
+        <div class="chart-row">
+            <div class="chart-column">
+                <div class="chart-container" id="la-dl-cqi-chart" style="height: 300px; width: 100%;"></div>
+            </div>
+            <div class="chart-column">
+                <div class="chart-container" id="la-dl-mcs-chart" style="height: 300px; width: 100%;"></div>
+            </div>
+            <div class="chart-column">
+                <div class="chart-container" id="la-dl-ri-chart" style="height: 300px; width: 100%;"></div>
+            </div>
+        </div>
+        
+        <!-- Side-by-side UL LA charts -->
+        <div class="chart-row">
+            <div class="chart-column">
+                <div class="chart-container" id="la-ul-snr-chart" style="height: 300px; width: 100%;"></div>
+            </div>
+            <div class="chart-column">
+                <div class="chart-container" id="la-ul-mcs-chart" style="height: 300px; width: 100%;"></div>
+            </div>
+            <div class="chart-column">
+                <div class="chart-container" id="la-ul-ri-chart" style="height: 300px; width: 100%;"></div>
+            </div>
+        </div>
+        
+        <!-- UE specific section -->
+        <div id="ue-specific-section">
+            <div class="section-title">UE-Specific Metrics</div>
+            
+            <!-- No UE selected message - show when no UE is selected -->
+            <div id="no-ue-message" class="no-ue-message">
+                No UE selected or no UEs attached to the cell
+            </div>
+            
+            <!-- UE metrics table - initially hidden -->
+            <table id="ue-metrics-table" class="ue-metrics-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody id="ue-metrics-body">
+                    <!-- Will be populated dynamically -->
+                </tbody>
+            </table>
+            
+            <!-- UE throughput charts -->
+            <div class="chart-row">
+                <div class="chart-column">
+                    <div class="chart-container" id="ue-dl-chart" style="height: 400px; width: 100%;"></div>
+                </div>
+                <div class="chart-column">
+                    <div class="chart-container" id="ue-ul-chart" style="height: 400px; width: 100%;"></div>
+                </div>
+            </div>
+            
+            <div id="ue-last-update" class="last-update"></div>
+        </div>
+        
+        <div id="combined-last-update" class="last-update"></div>
+    </div>
+    
+    <div id="l1-tab" class="tab-content">
+        <!-- Current values display for L1 -->
+        <div class="current-values">
+            <div class="value-box dl-value">
+                <div class="value-title">Current L1 DL</div>
+                <div id="l1-dl-current" class="value-number">0</div>
+                <div class="units">Mbps</div>
+            </div>
+            <div class="value-box ul-value">
+                <div class="value-title">Current L1 UL</div>
+                <div id="l1-ul-current" class="value-number">0</div>
+                <div class="units">Mbps</div>
+            </div>
+            <div class="value-box bler-value">
+                <div class="value-title">Current BLER</div>
+                <div id="l1-bler-current" class="value-number">0</div>
+                <div class="units">%</div>
+            </div>
+        </div>
+        <!-- Add timestamp display for L1 -->
+        <div id="l1-timestamp" class="timestamp">Time: 0Hr 0Min 0Sec</div>
+        <div id="l1-chart"></div>
+        <div id="l1-last-update" class="last-update"></div>
+    </div>
+    
+    <div id="err-tab" class="tab-content">
+        <div class="section-title">O-gNB Error Logs</div>
+        
+        <div class="log-source-toggle">
+            <button id="btn-both-logs" class="active" onclick="showLogs('both')">Both DU & CU</button>
+            <button id="btn-du-logs" onclick="showLogs('du')">DU Logs Only</button>
+            <button id="btn-cu-logs" onclick="showLogs('cu')">CU Logs Only</button>
+        </div>
+        
+        <div class="error-logs-container">
+            <div id="error-logs" class="error-logs">
+                <div style="text-align: center; padding: 20px;">Loading error logs...</div>
+            </div>
+        </div>
+        
+        <div id="logs-last-update" class="logs-last-update">Not updated yet</div>
+    </div>
+    
+    <!-- New Server Details tab -->
+    <div id="server-tab" class="tab-content">
+        <div class="section-title">Server Hardware Information</div>
+        
+        <div class="server-info-container">
+            <div class="server-info-card">
+                <div class="server-info-title">System Information</div>
+                <div id="system-info-content">
+                    <div class="server-info-item system-info-highlight">
+                        <span class="server-info-label">Loading...</span>
+                        <span class="server-info-value">Please wait</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="server-info-card">
+                <div class="server-info-title">CPU Information</div>
+                <div id="cpu-info-content">
+                    <div class="server-info-item">
+                        <span class="server-info-label">Loading...</span>
+                        <span class="server-info-value">Please wait</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="server-last-update" class="logs-last-update">Not updated yet</div>
+    </div>
+    
+    <div id="debug-info"></div>
+    
+    <script>
+        // Tab switching function
+        function openTab(tabName) {
+            var i, tabContent, tabButtons;
+            
+            // Hide all tab contents
+            tabContent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabContent.length; i++) {
+                tabContent[i].className = tabContent[i].className.replace(" active", "");
+            }
+            
+            // Remove "active" class from all tab buttons
+            tabButtons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].className = tabButtons[i].className.replace(" active", "");
+            }
+            
+            // Show the current tab and add "active" class to the button
+            document.getElementById(tabName).className += " active";
+            
+            // Find the button that opens this tab and add "active" class
+            for (i = 0; i < tabButtons.length; i++) {
+                if (tabButtons[i].textContent.includes(tabName === "combined-tab" ? "DU & LA" : 
+                    tabName === "l1-tab" ? "L1" : 
+                    tabName === "err-tab" ? "ERR" : "Server")) {
+                    tabButtons[i].className += " active";
+                }
+            }
+            
+            // If server details tab is selected, immediately update its content
+            if (tabName === "server-tab") {
+                updateServerInfo();
+            }
+            
+            // If error logs tab is selected, immediately update its content
+            if (tabName === "err-tab") {
+                updateErrorLogs();
+            }
+            
+            logDebug(`Switched to ${tabName}`);
+        }
+        
+        // Helper function to format numbers nicely
+        function formatNumber(num) {
+            return num.toFixed(2).replace(/\.00$/, '');
+        }
+        
+        // Debug logging function
+        var debugInfoDiv = document.getElementById("debug-info");
+        function logDebug(message) {
+            console.log(message);
+            const timestamp = new Date().toLocaleTimeString();
+            
+            // Get the calling function name if possible
+            let functionName = "unknown";
+            try {
+                functionName = logDebug.caller.name || "unknown";
+            } catch (e) {
+                // In strict mode or if caller info is not available
+                functionName = "unknown";
+            }
+            
+            const logMessage = `[DEBUG][${functionName}] ${message}`;
+            debugInfoDiv.innerHTML = `[${timestamp}] ${logMessage}<br>` + debugInfoDiv.innerHTML;
+            if (debugInfoDiv.innerHTML.split('<br>').length > 20) {
+                const lines = debugInfoDiv.innerHTML.split('<br>');
+                debugInfoDiv.innerHTML = lines.slice(0, 20).join('<br>');
+            }
+        }
+        
+        // Function to update the procmon status indicator
+        function updateProcmonStatus() {
+            fetch('procmon_status_172_27_21_27.json?' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const statusElement = document.getElementById('procmon-status');
+                    
+                    // Update text content
+                    statusElement.textContent = data.status_text;
+                    
+                    // Update CSS class based on status
+                    statusElement.className = 'status-indicator ' + 
+                        (data.running ? 'status-up' : 'status-down');
+                    
+                    logDebug(`Procmon status updated: ${data.status_text}`);
+                })
+                .catch(error => {
+                    const statusElement = document.getElementById('procmon-status');
+                    statusElement.textContent = 'PROCMON: CONNECTION ERROR';
+                    statusElement.className = 'status-indicator status-unknown';
+                    
+                    logDebug(`Error updating procmon status: ${error.message}`);
+                });
+        }
+        
+        // Update combined DU and LA charts
+        function updateCombinedChart() {
+            // Update DU charts
+            logDebug("Fetching new DU data...");
+            fetch('du_chart_data_172_27_21_27.json?' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    logDebug(`Received DU data with ${data.time_points.length} points for Cell ${data.cell_id}`);
+                    
+                    if (data.time_points.length > 0) {
+                        // Get the latest data point
+                        const latestIndex = data.time_points.length - 1;
+                        const latestDL = data.dl_values[latestIndex];
+                        const latestUL = data.ul_values[latestIndex];
+                        const currentTime = data.current_time || data.time_points[latestIndex];
+                        const numUEs = data.num_ue_values[latestIndex];
+                        
+                        // Update the current value displays
+                        document.getElementById('du-dl-current').textContent = formatNumber(latestDL);
+                        document.getElementById('du-ul-current').textContent = formatNumber(latestUL);
+                        
+                        // Update the UE counter
+                        document.getElementById('ue-counter-value').textContent = numUEs;
+                        
+                        // Update the timestamp display
+                        document.getElementById('du-timestamp').textContent = `UpTime: ${currentTime} sec`;
+                        
+                        // Store for crosshair sync
+                        window.combinedTabCharts = window.combinedTabCharts || {};
+                        
+                        // Create DL chart with shared hover config
+                        Plotly.react('du-dl-chart', [{
+                            x: data.time_points,
+                            y: data.dl_values,
+                            mode: 'lines+markers',
+                            name: 'Downlink Throughput',
+                            line: {color: 'blue'}
+                        }], {
+                            title: `Downlink Cell Throughput (Cell ${data.cell_id})`,
+                            xaxis: {
+                                title: 'Time (seconds)',
+                                tickmode: 'auto',
+                                nticks: 10
+                            },
+                            yaxis: {
+                                title: 'Throughput (Mbps)'
+                            },
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        }).then(function(gd) {
+                            window.combinedTabCharts.duDlChart = gd;
+                        });
+                        
+                        // Create UL chart with shared hover config
+                        Plotly.react('du-ul-chart', [{
+                            x: data.time_points,
+                            y: data.ul_values,
+                            mode: 'lines+markers',
+                            name: 'Uplink Throughput',
+                            line: {color: 'green'}
+                        }], {
+                            title: `Uplink Cell Throughput (Cell ${data.cell_id})`,
+                            xaxis: {
+                                title: 'Time (seconds)',
+                                tickmode: 'auto',
+                                nticks: 10
+                            },
+                            yaxis: {
+                                title: 'Throughput (Mbps)'
+                            },
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        }).then(function(gd) {
+                            window.combinedTabCharts.duUlChart = gd;
+                        });
+                    }
+                })
+                .catch(error => {
+                    logDebug(`Error updating DU chart: ${error.message}`);
+                });
+            
+            // Update LA charts
+            logDebug("Fetching new LA data...");
+            fetch('la_chart_data_172_27_21_27.json?' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.time_points && data.time_points.length > 0) {
+                        logDebug(`Received LA data with ${data.time_points.length} points for Cell ${data.cell_id}`);
+                        
+                        // Update the LA chart with new data
+                        const latestIndex = data.time_points.length - 1;
+                        
+                        // Update the current metric displays
+                        document.getElementById('la-dl-cqi').textContent = formatNumber(data.dl_cqi_values[latestIndex]);
+                        document.getElementById('la-dl-mcs').textContent = formatNumber(data.dl_mcs_values[latestIndex]);
+                        document.getElementById('la-dl-ri').textContent = formatNumber(data.dl_ri_values[latestIndex]);
+                        document.getElementById('la-ul-snr').textContent = formatNumber(data.ul_snr_values[latestIndex]);
+                        document.getElementById('la-ul-mcs').textContent = formatNumber(data.ul_mcs_values[latestIndex]);
+                        document.getElementById('la-ul-ri').textContent = formatNumber(data.ul_ri_values[latestIndex]);
+                        
+                        // Store for crosshair sync
+                        window.combinedTabCharts = window.combinedTabCharts || {};
+                        
+                        // Create individual LA charts with shared hover
+                        
+                        // DL CQI Chart
+                        Plotly.react('la-dl-cqi-chart', [{
+                            x: data.time_points,
+                            y: data.dl_cqi_values,
+                            mode: 'lines+markers',
+                            name: 'DL CQI',
+                            line: {color: 'blue'}
+                        }], {
+                            title: `Downlink Channel Quality Indicator (Cell ${data.cell_id})`,
+                            xaxis: { title: 'Time (seconds)' },
+                            yaxis: { title: 'CQI Value' },
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        }).then(function(gd) {
+                            window.combinedTabCharts.dlCqiChart = gd;
+                        });
+                        
+                        // DL MCS Chart
+                        Plotly.react('la-dl-mcs-chart', [{
+                            x: data.time_points,
+                            y: data.dl_mcs_values,
+                            mode: 'lines+markers',
+                            name: 'DL MCS',
+                            line: {color: 'green'}
+                        }], {
+                            title: `Downlink Modulation & Coding Scheme (Cell ${data.cell_id})`,
+                            xaxis: { title: 'Time (seconds)' },
+                            yaxis: { title: 'MCS Value' },
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        }).then(function(gd) {
+                            window.combinedTabCharts.dlMcsChart = gd;
+                        });
+                        
+                        // DL RI Chart
+                        Plotly.react('la-dl-ri-chart', [{
+                            x: data.time_points,
+                            y: data.dl_ri_values,
+                            mode: 'lines+markers',
+                            name: 'DL Rank',
+                            line: {color: 'purple'}
+                        }], {
+                            title: `Downlink Rank Indicator (Cell ${data.cell_id})`,
+                            xaxis: { title: 'Time (seconds)' },
+                            yaxis: { title: 'Rank Value' },
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        }).then(function(gd) {
+                            window.combinedTabCharts.dlRiChart = gd;
+                        });
+                        
+                        // UL SNR Chart
+                        Plotly.react('la-ul-snr-chart', [{
+                            x: data.time_points,
+                            y: data.ul_snr_values,
+                            mode: 'lines+markers',
+                            name: 'UL SNR',
+                            line: {color: 'red'}
+                        }], {
+                            title: `Uplink Signal-to-Noise Ratio (Cell ${data.cell_id})`,
+                            xaxis: { title: 'Time (seconds)' },
+                            yaxis: { title: 'SNR (dB)' },
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        }).then(function(gd) {
+                            window.combinedTabCharts.ulSnrChart = gd;
+                        });
+                        
+                        // UL MCS Chart
+                        Plotly.react('la-ul-mcs-chart', [{
+                            x: data.time_points,
+                            y: data.ul_mcs_values,
+                            mode: 'lines+markers',
+                            name: 'UL MCS',
+                            line: {color: 'orange'}
+                        }], {
+                            title: `Uplink Modulation & Coding Scheme (Cell ${data.cell_id})`,
+                            xaxis: { title: 'Time (seconds)' },
+                            yaxis: { title: 'MCS Value' },
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        }).then(function(gd) {
+                            window.combinedTabCharts.ulMcsChart = gd;
+                        });
+                        
+                        // UL RI Chart
+                        Plotly.react('la-ul-ri-chart', [{
+                            x: data.time_points,
+                            y: data.ul_ri_values,
+                            mode: 'lines+markers',
+                            name: 'UL Rank',
+                            line: {color: 'cyan'}
+                        }], {
+                            title: `Uplink Rank Indicator (Cell ${data.cell_id})`,
+                            xaxis: { title: 'Time (seconds)' },
+                            yaxis: { title: 'Rank Value' },
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        }).then(function(gd) {
+                            window.combinedTabCharts.ulRiChart = gd;
+                        });
+                        
+                        // Add crosshair synchronization after charts are created
+                        setupCombinedTabCrosshair();
+                    }
+                    
+                    // Update the last update time
+                    document.getElementById('combined-last-update').innerHTML = 'Last Updated: ' + new Date().toLocaleTimeString();
+                })
+                .catch(error => {
+                    logDebug(`Error updating LA chart: ${error.message}`);
+                });
+        }
+        
+        // Function to fetch L1 data and update chart with DL, UL, BLER
+        function updateL1Chart() {
+            logDebug("Fetching new L1 data...");
+            fetch('l1_chart_data_172_27_21_27.json?' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.time_points && data.time_points.length > 0) {
+                        logDebug(`Received L1 data with ${data.time_points.length} points. Latest DL: ${data.dl_values[data.dl_values.length-1]}, UL: ${data.ul_values[data.ul_values.length-1]}, BLER: ${data.bler_values[data.bler_values.length-1]}`);
+                        
+                        // Update the L1 chart with new data
+                        const latestIndex = data.time_points.length - 1;
+                        const latestDL = data.dl_values[latestIndex];
+                        const latestUL = data.ul_values[latestIndex];
+                        const latestBLER = data.bler_values[latestIndex];
+                        const timeStr = data.current_time_str || "N/A";
+                        
+                        // Update the current value displays
+                        document.getElementById('l1-dl-current').textContent = formatNumber(latestDL);
+                        document.getElementById('l1-ul-current').textContent = formatNumber(latestUL);
+                        document.getElementById('l1-bler-current').textContent = formatNumber(latestBLER);
+                        
+                        // Update the timestamp display
+                        document.getElementById('l1-timestamp').textContent = `Time: ${timeStr}`;
+                        
+                        // Store reference for crosshair sync
+                        window.l1TabChart = null;
+                        
+                        // Update the chart with all data points
+                        Plotly.react('l1-chart', [{
+                            x: data.time_points,
+                            y: data.dl_values,
+                            mode: 'lines+markers',
+                            name: 'L1-DL',
+                            line: {color: 'red'}
+                        }, {
+                            x: data.time_points,
+                            y: data.ul_values,
+                            mode: 'lines+markers',
+                            name: 'L1-UL',
+                            line: {color: 'orange'},
+                            xaxis: 'x2',
+                            yaxis: 'y2'
+                        }, {
+                            x: data.time_points,
+                            y: data.bler_values,
+                            mode: 'lines+markers',
+                            name: 'BLER',
+                            line: {color: 'purple'},
+                            xaxis: 'x3',
+                            yaxis: 'y3'
+                        }], {
+                            grid: {rows: 3, columns: 1, pattern: 'independent'},
+                            xaxis: {
+                                title: 'Time (seconds)',
+                                tickmode: 'auto',
+                                nticks: 10
+                            },
+                            yaxis: {
+                                title: 'Downlink Throughput (Mbps)'
+                            },
+                            xaxis2: {
+                                title: 'Time (seconds)', 
+                                tickmode: 'auto',
+                                nticks: 10
+                            },
+                            yaxis2: {
+                                title: 'Uplink Throughput (Mbps)'
+                            },
+                            xaxis3: {
+                                title: 'Time (seconds)', 
+                                tickmode: 'auto',
+                                nticks: 10
+                            },
+                            yaxis3: {
+                                title: 'BLER (%)'
+                            },
+                            height: 900,
+                            width: 1000,
+                            showlegend: true,
+                            hovermode: 'closest'
+                        }).then(function(gd) {
+                            window.l1TabChart = gd;
+                            setupL1TabCrosshair();
+                        });
+                    } else {
+                        logDebug("No L1 data points available yet");
+                    }
+                    
+                    // Update the last update time
+                    document.getElementById('l1-last-update').innerHTML = 'Last Updated: ' + new Date().toLocaleTimeString();
+                })
+                .catch(error => {
+                    logDebug(`Error updating L1 chart: ${error.message}`);
+                    console.error('Error updating L1 chart:', error);
+                });
+        }
+        
+        // Function to setup synchronized crosshair in Combined Tab (DU & LA)
+        function setupCombinedTabCrosshair() {
+            if (!window.combinedTabCharts) {
+                logDebug("Combined tab charts not ready yet for crosshair setup");
+                return;
+            }
+            
+            const charts = [
+                window.combinedTabCharts.duDlChart,
+                window.combinedTabCharts.duUlChart,
+                window.combinedTabCharts.dlCqiChart,
+                window.combinedTabCharts.dlMcsChart,
+                window.combinedTabCharts.dlRiChart,
+                window.combinedTabCharts.ulSnrChart,
+                window.combinedTabCharts.ulMcsChart,
+                window.combinedTabCharts.ulRiChart
+            ].filter(chart => chart != null);
+            
+            logDebug(`Setting up crosshair for ${charts.length} charts in combined tab`);
+            
+            if (charts.length < 2) return;
+            
+            // Remove any existing event listeners to avoid duplication
+            charts.forEach(chart => {
+                if (chart && chart.removeAllListeners) {
+                    chart.removeAllListeners('plotly_hover');
+                }
+            });
+            
+            // Create tooltip element if it doesn't exist
+            let tooltip = document.getElementById('crosshair-tooltip');
+            if (!tooltip) {
+                tooltip = document.createElement('div');
+                tooltip.id = 'crosshair-tooltip';
+                tooltip.className = 'crosshair-tooltip';
+                tooltip.style.display = 'none';
+                document.body.appendChild(tooltip);
+            }
+            
+            // For each chart, add hover event
+            charts.forEach(chart => {
+                chart.on('plotly_hover', function(eventData) {
+                    if (!eventData || !eventData.points || eventData.points.length === 0) return;
+                    
+                    const point = eventData.points[0];
+                    const xVal = point.x;
+                    
+                    // Find all values at this x-coordinate from all charts
+                    const allValues = {};
+                    
+                    // Collection for storing all values at this time point
+                    const timeValues = {
+                        time: xVal,
+                        duDl: null,
+                        duUl: null,
+                        dlCqi: null,
+                        dlMcs: null,
+                        dlRi: null,
+                        ulSnr: null,
+                        ulMcs: null,
+                        ulRi: null
+                    };
+                    
+                    // For each chart, find the closest point to xVal
+                    Object.entries(window.combinedTabCharts).forEach(([chartName, chartObj]) => {
+                        if (chartObj && chartObj.data && chartObj.data[0] && chartObj.data[0].x) {
+                            let closestPoint = null;
+                            let closestDistance = Infinity;
+                            
+                            for (let i = 0; i < chartObj.data[0].x.length; i++) {
+                                const distance = Math.abs(chartObj.data[0].x[i] - xVal);
+                                if (distance < closestDistance) {
+                                    closestDistance = distance;
+                                    closestPoint = {
+                                        x: chartObj.data[0].x[i],
+                                        y: chartObj.data[0].y[i]
+                                    };
+                                }
+                            }
+                            
+                            if (closestPoint) {
+                                allValues[chartName] = {
+                                    name: chartObj.data[0].name,
+                                    x: closestPoint.x,
+                                    y: closestPoint.y
+                                };
+                                
+                                // Store in our consolidated structure
+                                switch(chartName) {
+                                    case 'duDlChart': timeValues.duDl = closestPoint.y; break;
+                                    case 'duUlChart': timeValues.duUl = closestPoint.y; break;
+                                    case 'dlCqiChart': timeValues.dlCqi = closestPoint.y; break;
+                                    case 'dlMcsChart': timeValues.dlMcs = closestPoint.y; break;
+                                    case 'dlRiChart': timeValues.dlRi = closestPoint.y; break;
+                                    case 'ulSnrChart': timeValues.ulSnr = closestPoint.y; break;
+                                    case 'ulMcsChart': timeValues.ulMcs = closestPoint.y; break;
+                                    case 'ulRiChart': timeValues.ulRi = closestPoint.y; break;
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Build an enhanced tooltip with all values
+                    let tooltipHTML = `
+                        <div class="tooltip-title">Time Point: ${xVal} sec</div>
+                        
+                        <div class="tooltip-section">
+                            <div class="tooltip-value">
+                                <span class="tooltip-label tooltip-dl">DL Throughput:</span>
+                                <span class="tooltip-number">${timeValues.duDl !== null ? timeValues.duDl.toFixed(2) : 'N/A'} Mbps</span>
+                            </div>
+                            <div class="tooltip-value">
+                                <span class="tooltip-label tooltip-ul">UL Throughput:</span>
+                                <span class="tooltip-number">${timeValues.duUl !== null ? timeValues.duUl.toFixed(2) : 'N/A'} Mbps</span>
+                            </div>
+                        </div>
+                        
+                        <div class="tooltip-section">
+                            <div class="tooltip-value">
+                                <span class="tooltip-label tooltip-dl">DL CQI:</span>
+                                <span class="tooltip-number">${timeValues.dlCqi !== null ? timeValues.dlCqi.toFixed(2) : 'N/A'}</span>
+                            </div>
+                            <div class="tooltip-value">
+                                <span class="tooltip-label tooltip-dl">DL MCS:</span>
+                                <span class="tooltip-number">${timeValues.dlMcs !== null ? timeValues.dlMcs.toFixed(2) : 'N/A'}</span>
+                            </div>
+                            <div class="tooltip-value">
+                                <span class="tooltip-label tooltip-dl">DL Rank:</span>
+                                <span class="tooltip-number">${timeValues.dlRi !== null ? timeValues.dlRi.toFixed(2) : 'N/A'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="tooltip-section">
+                            <div class="tooltip-value">
+                                <span class="tooltip-label tooltip-ul">UL SNR:</span>
+                                <span class="tooltip-number">${timeValues.ulSnr !== null ? timeValues.ulSnr.toFixed(2) : 'N/A'} dB</span>
+                            </div>
+                            <div class="tooltip-value">
+                                <span class="tooltip-label tooltip-ul">UL MCS:</span>
+                                <span class="tooltip-number">${timeValues.ulMcs !== null ? timeValues.ulMcs.toFixed(2) : 'N/A'}</span>
+                            </div>
+                            <div class="tooltip-value">
+                                <span class="tooltip-label tooltip-ul">UL Rank:</span>
+                                <span class="tooltip-number">${timeValues.ulRi !== null ? timeValues.ulRi.toFixed(2) : 'N/A'}</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Update tooltip content
+                    tooltip.innerHTML = tooltipHTML;
+                    
+                    // Show tooltip and position directly at cursor
+                    tooltip.style.display = 'block';
+                    
+                    // Get cursor position from the event
+                    const cursorX = eventData.event.clientX;
+                    const cursorY = eventData.event.clientY;
+                    
+                    // Get viewport dimensions
+                    const viewportWidth = window.innerWidth;
+                    const viewportHeight = window.innerHeight;
+                    
+                    // Set initial position at cursor
+                    tooltip.style.left = `${cursorX + 10}px`;
+                    tooltip.style.top = `${cursorY + 10}px`;
+                    
+                    // After setting content and showing tooltip, check if it fits in viewport
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    
+                    // Adjust horizontal position if needed
+                    if (cursorX + tooltipRect.width + 25 > viewportWidth) {
+                        tooltip.style.left = `${cursorX - tooltipRect.width - 10}px`;
+                    }
+                    
+                    // Adjust vertical position if needed
+                    if (cursorY + tooltipRect.height + 25 > viewportHeight) {
+                        tooltip.style.top = `${cursorY - tooltipRect.height - 10}px`;
+                    }
+                    
+                    // Update all charts with vertical line and point highlight at the same x value
+                    charts.forEach(otherChart => {
+                        if (otherChart) {
+                            // Find the closest point in this chart's data
+                            let closestPoint = null;
+                            let closestDistance = Infinity;
+                            
+                            if (otherChart.data && otherChart.data[0] && otherChart.data[0].x) {
+                                for (let i = 0; i < otherChart.data[0].x.length; i++) {
+                                    const distance = Math.abs(otherChart.data[0].x[i] - xVal);
+                                    if (distance < closestDistance) {
+                                        closestDistance = distance;
+                                        closestPoint = {
+                                            x: otherChart.data[0].x[i],
+                                            y: otherChart.data[0].y[i]
+                                        };
+                                    }
+                                }
+                            }
+                            
+                            // Create shapes array for the crosshair line and point highlight
+                            let shapes = [{
+                                type: 'line',
+                                x0: xVal,
+                                x1: xVal,
+                                y0: 0,
+                                y1: 1,
+                                xref: 'x',
+                                yref: 'paper',
+                                line: {
+                                    color: 'rgba(255, 0, 0, 0.7)',
+                                    width: 2,
+                                    dash: 'solid'
+                                }
+                            }];
+                            
+                            // Add circle highlight at the closest point if found
+                            if (closestPoint) {
+                                shapes.push({
+                                    type: 'circle',
+                                    xref: 'x',
+                                    yref: 'y',
+                                    x0: closestPoint.x - 0.5,
+                                    y0: closestPoint.y - 0.5,
+                                    x1: closestPoint.x + 0.5,
+                                    y1: closestPoint.y + 0.5,
+                                    fillcolor: 'rgba(255, 0, 0, 0.7)',
+                                    line: {
+                                        color: 'rgb(255, 0, 0)',
+                                        width: 2
+                                    }
+                                });
+                            }
+                            
+                            Plotly.relayout(otherChart, { shapes: shapes });
+                        }
+                    });
+                });
+                
+                // Clear the vertical line when the cursor leaves
+                chart.on('plotly_unhover', function() {
+                    charts.forEach(anyChart => {
+                        if (anyChart) {
+                            Plotly.relayout(anyChart, { shapes: [] });
+                        }
+                    });
+                    
+                    // Hide tooltip
+                    tooltip.style.display = 'none';
+                });
+            });
+            
+            logDebug("Combined tab crosshair setup complete");
+        }
+        
+        // Function to setup synchronized crosshair in L1 Tab
+        function setupL1TabCrosshair() {
+            if (!window.l1TabChart) {
+                logDebug("L1 tab chart not ready yet for crosshair setup");
+                return;
+            }
+            
+            const chart = window.l1TabChart;
+            logDebug("Setting up crosshair for L1 chart");
+            
+            // Create tooltip element if it doesn't exist
+            let tooltip = document.getElementById('crosshair-tooltip-l1');
+            if (!tooltip) {
+                tooltip = document.createElement('div');
+                tooltip.id = 'crosshair-tooltip-l1';
+                tooltip.className = 'crosshair-tooltip';
+                tooltip.style.display = 'none';
+                document.body.appendChild(tooltip);
+            }
+            
+            chart.on('plotly_hover', function(eventData) {
+                if (!eventData || !eventData.points || eventData.points.length === 0) return;
+                
+                const point = eventData.points[0];
+                const xVal = point.x;
+                const yVal = point.y;
+                
+                // For L1 tab, find all values at this time point from all three subplots
+                const l1Values = {
+                    time: xVal,
+                    dl: null,
+                    ul: null,
+                    bler: null
+                };
+                
+                // Get values from all three traces at this x coordinate
+                for (let i = 0; i < 3; i++) { // We have 3 traces in L1 chart
+                    if (chart.data[i] && chart.data[i].x) {
+                        let closestPoint = null;
+                        let closestDistance = Infinity;
+                        
+                        for (let j = 0; j < chart.data[i].x.length; j++) {
+                            const distance = Math.abs(chart.data[i].x[j] - xVal);
+                            if (distance < closestDistance) {
+                                closestDistance = distance;
+                                closestPoint = {
+                                    x: chart.data[i].x[j],
+                                    y: chart.data[i].y[j]
+                                };
+                            }
+                        }
+                        
+                        if (closestPoint) {
+                            // Store values based on trace index (0=DL, 1=UL, 2=BLER)
+                            if (i === 0) l1Values.dl = closestPoint.y;
+                            else if (i === 1) l1Values.ul = closestPoint.y;
+                            else if (i === 2) l1Values.bler = closestPoint.y;
+                        }
+                    }
+                }
+                
+                // Create comprehensive tooltip with all L1 values
+                const tooltipHTML = `
+                    <div class="tooltip-title">Time Point: ${xVal} sec</div>
+                    
+                    <div class="tooltip-section">
+                        <div class="tooltip-value">
+                            <span class="tooltip-label tooltip-dl">L1 Downlink:</span>
+                            <span class="tooltip-number">${l1Values.dl !== null ? l1Values.dl.toFixed(2) : 'N/A'} Mbps</span>
+                        </div>
+                        <div class="tooltip-value">
+                            <span class="tooltip-label tooltip-ul">L1 Uplink:</span>
+                            <span class="tooltip-number">${l1Values.ul !== null ? l1Values.ul.toFixed(2) : 'N/A'} Mbps</span>
+                        </div>
+                        <div class="tooltip-value">
+                            <span class="tooltip-label tooltip-bler">BLER:</span>
+                            <span class="tooltip-number">${l1Values.bler !== null ? l1Values.bler.toFixed(2) : 'N/A'}%</span>
+                        </div>
+                    </div>
+                `;
+                
+                // Update tooltip content
+                tooltip.innerHTML = tooltipHTML;
+                
+                // Show tooltip and position directly at cursor
+                tooltip.style.display = 'block';
+                
+                // Get cursor position from the event
+                const cursorX = eventData.event.clientX;
+                const cursorY = eventData.event.clientY;
+                
+                // Get viewport dimensions
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                
+                // Set initial position at cursor
+                tooltip.style.left = `${cursorX + 10}px`;
+                tooltip.style.top = `${cursorY + 10}px`;
+                
+                // After setting content and showing tooltip, check if it fits in viewport
+                const tooltipRect = tooltip.getBoundingClientRect();
+                
+                // Adjust horizontal position if needed
+                if (cursorX + tooltipRect.width + 25 > viewportWidth) {
+                    tooltip.style.left = `${cursorX - tooltipRect.width - 10}px`;
+                }
+                
+                // Adjust vertical position if needed
+                if (cursorY + tooltipRect.height + 25 > viewportHeight) {
+                    tooltip.style.top = `${cursorY - tooltipRect.height - 10}px`;
+                }
+                
+                // Need to handle the multi-subplot case for L1 chart
+                let shapes = [];
+                
+                // Create vertical lines for each subplot with increased width
+                ['xaxis', 'xaxis2', 'xaxis3'].forEach((xref, index) => {
+                    shapes.push({
+                        type: 'line',
+                        x0: xVal,
+                        x1: xVal,
+                        y0: 0,
+                        y1: 1,
+                        xref: xref,
+                        yref: 'paper',
+                        line: {
+                            color: 'rgba(255, 0, 0, 0.7)',  // More opaque
+                            width: 2,                       // Thicker line
+                            dash: 'solid'
+                        }
+                    });
+                    
+                    // Find the corresponding data for each subplot
+                    const traceIndex = index; // Assuming traces are in the same order as subplots
+                    if (chart.data[traceIndex]) {
+                        // Find the closest point on this trace
+                        let closestPoint = null;
+                        let closestDistance = Infinity;
+                        
+                        for (let i = 0; i < chart.data[traceIndex].x.length; i++) {
+                            const distance = Math.abs(chart.data[traceIndex].x[i] - xVal);
+                            if (distance < closestDistance) {
+                                closestDistance = distance;
+                                closestPoint = {
+                                    x: chart.data[traceIndex].x[i],
+                                    y: chart.data[traceIndex].y[i]
+                                };
+                            }
+                        }
+                        
+                        // Add circle highlight for the closest point
+                        if (closestPoint) {
+                            shapes.push({
+                                type: 'circle',
+                                xref: xref,
+                                yref: index === 0 ? 'y' : (index === 1 ? 'y2' : 'y3'),
+                                x0: closestPoint.x - 0.5,
+                                y0: closestPoint.y - 0.5,
+                                x1: closestPoint.x + 0.5,
+                                y1: closestPoint.y + 0.5,
+                                fillcolor: 'rgba(255, 0, 0, 0.7)',
+                                line: {
+                                    color: 'rgb(255, 0, 0)',
+                                    width: 2
+                                }
+                            });
+                        }
+                    }
+                });
+                
+                Plotly.relayout(chart, { shapes: shapes });
+            });
+            
+            chart.on('plotly_unhover', function() {
+                Plotly.relayout(chart, { shapes: [] });
+                
+                // Hide tooltip
+                tooltip.style.display = 'none';
+            });
+            
+            logDebug("L1 tab crosshair setup complete");
+        }
+        
+        // Filter error logs by source
+        function showLogs(source) {
+            // Update button states
+            document.getElementById('btn-both-logs').classList.remove('active');
+            document.getElementById('btn-du-logs').classList.remove('active');
+            document.getElementById('btn-cu-logs').classList.remove('active');
+            
+            document.getElementById(`btn-${source}-logs`).classList.add('active');
+            
+            // Get all log entries
+            const duLogs = document.querySelectorAll('.error-entry[data-source="du"]');
+            const cuLogs = document.querySelectorAll('.error-entry[data-source="cu"]');
+            
+            // Show/hide based on selected filter
+            if (source === 'both') {
+                duLogs.forEach(log => log.style.display = 'block');
+                cuLogs.forEach(log => log.style.display = 'block');
+            } else if (source === 'du') {
+                duLogs.forEach(log => log.style.display = 'block');
+                cuLogs.forEach(log => log.style.display = 'none');
+            } else if (source === 'cu') {
+                duLogs.forEach(log => log.style.display = 'none');
+                cuLogs.forEach(log => log.style.display = 'block');
+            }
+            
+            logDebug(`Filtered error logs to show: ${source}`);
+        }
+        
+        // Function to update error logs
+        function updateErrorLogs() {
+            fetch('error_logs_172_27_21_27.json?' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const logsContainer = document.getElementById('error-logs');
+                    
+                    if (!data.du_logs && !data.cu_logs) {
+                        logsContainer.innerHTML = '<div style="text-align: center; padding: 20px;">No error logs found</div>';
+                        return;
+                    }
+                    
+                    let logsHTML = '';
+                    
+                    // Process DU logs
+                    if (data.du_logs) {
+                        data.du_logs.forEach(log => {
+                            logsHTML += `
+                                <div class="error-entry" data-source="du">
+                                    <span class="error-source">DU</span>
+                                    <span class="error-timestamp">${log.timestamp}</span>
+                                    <span class="error-level error-level-${log.level}">${log.level}</span>
+                                    <pre>${log.message}</pre>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    // Process CU logs
+                    if (data.cu_logs) {
+                        data.cu_logs.forEach(log => {
+                            logsHTML += `
+                                <div class="error-entry" data-source="cu">
+                                    <span class="error-source">CU</span>
+                                    <span class="error-timestamp">${log.timestamp}</span>
+                                    <span class="error-level error-level-${log.level}">${log.level}</span>
+                                    <pre>${log.message}</pre>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    // Update the content
+                    logsContainer.innerHTML = logsHTML || '<div style="text-align: center; padding: 20px;">No error logs found</div>';
+                    
+                    // Update the last update time
+                    document.getElementById('logs-last-update').textContent = `Last Updated: ${new Date().toLocaleString()}`;
+                    
+                    // Re-apply any active filter
+                    const activeFilter = document.querySelector('.log-source-toggle button.active');
+                    if (activeFilter) {
+                        const source = activeFilter.id.replace('btn-', '').replace('-logs', '');
+                        showLogs(source);
+                    }
+                    
+                    logDebug(`Updated error logs. Found ${(data.du_logs || []).length} DU logs and ${(data.cu_logs || []).length} CU logs`);
+                })
+                .catch(error => {
+                    const logsContainer = document.getElementById('error-logs');
+                    logsContainer.innerHTML = `<div style="text-align: center; color: red; padding: 20px;">
+                        Error loading logs: ${error.message}</div>`;
+                    logDebug(`Error updating error logs: ${error.message}`);
+                });
+        }
+        
+        // Function to update server information
+        function updateServerInfo() {
+            fetch('server_info_172_27_21_27.json?' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Update system info section
+                    const systemInfoContent = document.getElementById('system-info-content');
+                    let systemHtml = '';
+                    
+                    // Process system information
+                    if (data.system_info) {
+                        const sysInfo = data.system_info;
+                        
+                        // Add key system information
+                        const systemItems = [
+                            { label: "Manufacturer", value: sysInfo.manufacturer || "N/A" },
+                            { label: "Product Name", value: sysInfo.product_name || "N/A" },
+                            { label: "Version", value: sysInfo.version || "N/A" },
+                            { label: "Serial Number", value: sysInfo.serial_number || "N/A" },
+                            { label: "UUID", value: sysInfo.uuid || "N/A" },
+                            { label: "Status", value: sysInfo.status || "N/A" }
+                        ];
+                        
+                        systemItems.forEach((item, index) => {
+                            const highlightClass = index === 0 ? "system-info-highlight" : "";
+                            systemHtml += `
+                                <div class="server-info-item ${highlightClass}">
+                                    <span class="server-info-label">${item.label}:</span>
+                                    <span class="server-info-value">${item.value}</span>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        systemHtml = '<div class="server-info-item">No system information available</div>';
+                    }
+                    
+                    systemInfoContent.innerHTML = systemHtml;
+                    
+                    // Update CPU info section
+                    const cpuInfoContent = document.getElementById('cpu-info-content');
+                    let cpuHtml = '';
+                    
+                    // Process CPU information
+                    if (data.cpu_info) {
+                        const cpuInfo = data.cpu_info;
+                        
+                        // Add key CPU information
+                        const cpuItems = [
+                            { label: "Architecture", value: cpuInfo.architecture || "N/A" },
+                            { label: "Model Name", value: cpuInfo.model_name || "N/A" },
+                            { label: "CPU(s)", value: cpuInfo.cpus || "N/A" },
+                            { label: "Cores per Socket", value: cpuInfo.cores_per_socket || "N/A" },
+                            { label: "Threads per Core", value: cpuInfo.threads_per_core || "N/A" },
+                            { label: "CPU MHz", value: cpuInfo.cpu_mhz || "N/A" },
+                            { label: "Max MHz", value: cpuInfo.max_mhz || "N/A" },
+                            { label: "Min MHz", value: cpuInfo.min_mhz || "N/A" },
+                            { label: "CPU Family", value: cpuInfo.cpu_family || "N/A" },
+                            { label: "Virtualization", value: cpuInfo.virtualization || "N/A" }
+                        ];
+                        
+                        cpuItems.forEach(item => {
+                            cpuHtml += `
+                                <div class="server-info-item">
+                                    <span class="server-info-label">${item.label}:</span>
+                                    <span class="server-info-value">${item.value}</span>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        cpuHtml = '<div class="server-info-item">No CPU information available</div>';
+                    }
+                    
+                    cpuInfoContent.innerHTML = cpuHtml;
+                    
+                    // Update the last update time
+                    document.getElementById('server-last-update').textContent = `Last Updated: ${new Date().toLocaleString()}`;
+                    
+                    logDebug("Server information updated successfully");
+                })
+                .catch(error => {
+                    document.getElementById('system-info-content').innerHTML = 
+                        `<div class="server-info-item">Error loading system info: ${error.message}</div>`;
+                    document.getElementById('cpu-info-content').innerHTML = 
+                        `<div class="server-info-item">Error loading CPU info: ${error.message}</div>`;
+                    
+                    logDebug(`Error updating server information: ${error.message}`);
+                });
+        }
+        
+        // Add global variable to track current cell selection
+        let currentCellId = null;
+        let availableCells = [];
+        
+        // Function to initialize the cell selector
+        function initializeCellSelector() {
+            fetch('cell_info_172_27_21_27.json?' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Ensure availableCells is an array of integers
+                    availableCells = Array.isArray(data.available_cells) ? 
+                        data.available_cells.map(cell => parseInt(cell, 10)) : [];
+                    
+                    logDebug(`Available cells from JSON: ${JSON.stringify(availableCells)}`);
+                    
+                    const defaultCell = data.default_cell ? 
+                        parseInt(data.default_cell, 10) : 
+                        (availableCells.length > 0 ? availableCells[0] : null);
+                    
+                    // Populate cell selector dropdown
+                    const selector = document.getElementById('cell-selector');
+                    selector.innerHTML = ''; // Clear loading option
+                    
+                    if (availableCells.length === 0) {
+                        // No cells available
+                        selector.innerHTML = '<option value="">No cells found</option>';
+                        logDebug("No cells found in system");
+                    } else {
+                        // Add options for each cell, using the exact cell IDs from the JSON
+                        availableCells.forEach(cellId => {
+                            if (!isNaN(cellId)) { // Only add valid numeric cell IDs
+                                const option = document.createElement('option');
+                                option.value = cellId;
+                                option.text = `Cell ${cellId}`;
+                                selector.appendChild(option);
+                                logDebug(`Added cell ${cellId} to dropdown`);
+                            }
+                        });
+                        
+                        // Set the default cell
+                        if (defaultCell && !isNaN(defaultCell)) {
+                            selector.value = defaultCell;
+                            currentCellId = defaultCell;
+                            logDebug(`Set default cell to Cell ${defaultCell}`);
+                        } else if (availableCells.length > 0) {
+                            // Fallback to first available cell if default is invalid
+                            selector.value = availableCells[0];
+                            currentCellId = availableCells[0];
+                            logDebug(`Default cell invalid, using Cell ${availableCells[0]} instead`);
+                        }
+                    }
+                    
+                    // Trigger initial cell selection
+                    cellSelectionChanged();
+                })
+                .catch(error => {
+                    logDebug(`Error loading cell information: ${error.message}`);
+                    document.getElementById('cell-selector').innerHTML = 
+                        '<option value="">Error loading cells</option>';
+                });
+        }
+        
+        // Function to handle cell selection change
+        function cellSelectionChanged() {
+            const selector = document.getElementById('cell-selector');
+            const selectedCell = parseInt(selector.value, 10);
+            
+            if (isNaN(selectedCell)) {
+                logDebug("Invalid cell selection");
+                return;
+            }
+            
+            if (currentCellId !== selectedCell) {
+                const previousCellId = currentCellId;
+                currentCellId = selectedCell;
+                logDebug(`Cell selection changed from Cell ${previousCellId} to Cell ${selectedCell}`);
+                
+                // Save the selection to a file for the backend
+                fetch('cell_selection_172_27_21_27.json', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        'selected_cell': selectedCell,
+                        'timestamp': Date.now()
+                    })
+                }).catch(error => {
+                    logDebug(`Error saving cell selection: ${error.message}`);
+                });
+                
+                // Update the charts immediately with the new selection
+                updateCombinedChart();
+                
+                // Update the UE selector to show only UEs for the newly selected cell
+                logDebug(`Refreshing UE selector for Cell ${selectedCell}...`);
+                initializeUeSelector();
+            }
+        }
+        
+        // Function to initialize the UE selector
+        function initializeUeSelector() {
+            // First clear the dropdown
+            const ueSelector = document.getElementById('ue-selector');
+            ueSelector.innerHTML = '<option value="">Loading UEs...</option>';
+            
+            fetch('ue_info_172_27_21_27.json?' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Get all available UEs
+                    const allUeIds = data.available_ues || [];
+                    const ueMetrics = data.ue_metrics || {};
+                    const cellFromJson = data.cell_id;
+                    
+                    // Filter UEs by the currently selected cell
+                    const filteredUeIds = allUeIds.filter(ueId => {
+                        // Check if this UE has metrics and belongs to the current cell
+                        return ueMetrics[ueId] && 
+                               ueMetrics[ueId]["PCELL-ID"] === currentCellId;
+                    });
+                    
+                    logDebug(`Found ${filteredUeIds.length} UEs for Cell ${currentCellId} out of ${allUeIds.length} total UEs`);
+                    
+                    ueSelector.innerHTML = ''; // Clear loading option
+                    
+                    if (filteredUeIds.length === 0) {
+                        // No UEs available for this cell
+                        ueSelector.innerHTML = '<option value="">No UEs attached to this cell</option>';
+                        // Reset UE selection to null
+                        updateUeSelection(null);
+                        // Show the no UE message
+                        document.getElementById('no-ue-message').style.display = 'block';
+                        document.getElementById('ue-metrics-table').style.display = 'none';
+                        
+                        // Update chart titles to indicate no UEs
+                        updateUeChartTitles(currentCellId, null, true);
+                        
+                        logDebug(`No UEs found for cell ${currentCellId}`);
+                    } else {
+                        // Add placeholder first option
+                        const placeholderOption = document.createElement('option');
+                        placeholderOption.value = "";
+                        placeholderOption.text = "Select a UE...";
+                        ueSelector.appendChild(placeholderOption);
+                        
+                        // Add options for each UE that belongs to the current cell
+                        filteredUeIds.forEach(ueId => {
+                            const option = document.createElement('option');
+                            option.value = ueId;
+                            option.text = `UE ${ueId}`;
+                            ueSelector.appendChild(option);
+                        });
+                        
+                        logDebug(`Added ${filteredUeIds.length} UEs to dropdown for cell ${currentCellId}`);
+                        
+                        // Get currently selected UE
+                        fetch('ue_selection_172_27_21_27.json?' + new Date().getTime())
+                            .then(response => response.json())
+                            .catch(() => ({ selected_ue: null }))
+                            .then(selection => {
+                                const selectedUe = selection.selected_ue;
+                                
+                                // Check if the previously selected UE is still available in the filtered list
+                                if (selectedUe !== null && filteredUeIds.includes(parseInt(selectedUe))) {
+                                    ueSelector.value = selectedUe;
+                                    updateUeSelection(selectedUe);
+                                    logDebug(`Kept previous UE selection: UE ${selectedUe}`);
+                                } else {
+                                    // Reset to no selection if UE is not available in the current cell
+                                    ueSelector.value = "";
+                                    updateUeSelection(null);
+                                    document.getElementById('no-ue-message').style.display = 'block';
+                                    document.getElementById('ue-metrics-table').style.display = 'none';
+                                    logDebug(`Reset UE selection because previously selected UE is not in cell ${currentCellId}`);
+                                }
+                            });
+                    }
+                })
+                .catch(error => {
+                    logDebug(`Error loading UE information: ${error.message}`);
+                    ueSelector.innerHTML = '<option value="">Error loading UEs</option>';
+                    
+                    // Show the no UE message
+                    document.getElementById('no-ue-message').style.display = 'block';
+                    document.getElementById('ue-metrics-table').style.display = 'none';
+                });
+        }
+        
+        // Function to handle UE selection change
+        function ueSelectionChanged() {
+            const selector = document.getElementById('ue-selector');
+            const selectedUe = selector.value;
+            
+            updateUeSelection(selectedUe);
+            
+            // Show/hide the appropriate elements based on selection
+            if (selectedUe === "") {
+                document.getElementById('no-ue-message').style.display = 'block';
+                document.getElementById('ue-metrics-table').style.display = 'none';
+                updateUeChartTitles(currentCellId, null, true);
+            } else {
+                document.getElementById('no-ue-message').style.display = 'none';
+                // Table will be shown when data arrives
+                updateUeChartTitles(currentCellId, selectedUe, false);
+            }
+            
+            logDebug(`UE selection changed to: ${selectedUe || "None"}`);
+        }
+        
+        // Function to update UE selection in the backend
+        function updateUeSelection(ueId) {
+            fetch('ue_selection_172_27_21_27.json', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    'selected_ue': ueId ? parseInt(ueId) : null,
+                    'timestamp': Date.now()
+                })
+            }).catch(error => {
+                logDebug(`Error saving UE selection: ${error.message}`);
+            });
+        }
+        
+        // Function to update UE chart titles based on selection state
+        function updateUeChartTitles(cellId, ueId, noUeAttached) {
+            const dlLayout = {
+                title: noUeAttached ? 
+                    `NO UE ATTACHED TO CELL ${cellId}` : 
+                    `UE ${ueId} Downlink Throughput (Cell ${cellId})`,
+                xaxis: { title: 'Time (seconds)' },
+                yaxis: { title: 'Throughput (Mbps)' },
+                margin: { t: 40, b: 40, l: 60, r: 10 },
+                hovermode: 'closest'
+            };
+            
+            const ulLayout = {
+                title: noUeAttached ? 
+                    `NO UE ATTACHED TO CELL ${cellId}` : 
+                    `UE ${ueId} Uplink Throughput (Cell ${cellId})`,
+                xaxis: { title: 'Time (seconds)' },
+                yaxis: { title: 'Throughput (Mbps)' },
+                margin: { t: 40, b: 40, l: 60, r: 10 },
+                hovermode: 'closest'
+            };
+            
+            Plotly.relayout('ue-dl-chart', dlLayout);
+            Plotly.relayout('ue-ul-chart', ulLayout);
+        }
+        
+        // Function to update the UE specific chart and metrics
+        function updateUeChart() {
+            // Only update if we have a UE selected
+            const ueSelector = document.getElementById('ue-selector');
+            if (!ueSelector || ueSelector.value === "") return;
+            
+            logDebug("Fetching UE-specific data...");
+            fetch('ue_chart_data_172_27_21_27.json?' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const ueId = data.ue_id;
+                    const cellId = data.cell_id;
+                    
+                    if (!data.found || !ueId) {
+                        // No data found for this UE
+                        logDebug(`No data found for UE ${ueId}`);
+                        document.getElementById('no-ue-message').style.display = 'block';
+                        document.getElementById('ue-metrics-table').style.display = 'none';
+                        updateUeChartTitles(cellId, ueId, true);
+                        
+                        // Clear the charts
+                        Plotly.react('ue-dl-chart', [{
+                            x: [], y: [], mode: 'lines+markers', name: 'UE Downlink', line: {color: 'blue'}
+                        }], {
+                            title: `NO UE DATA AVAILABLE FOR UE ${ueId} (CELL ${cellId})`,
+                            xaxis: {title: 'Time (seconds)'},
+                            yaxis: {title: 'Throughput (Mbps)'},
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        });
+                        
+                        Plotly.react('ue-ul-chart', [{
+                            x: [], y: [], mode: 'lines+markers', name: 'UE Uplink', line: {color: 'green'}
+                        }], {
+                            title: `NO UE DATA AVAILABLE FOR UE ${ueId} (CELL ${cellId})`,
+                            xaxis: {title: 'Time (seconds)'},
+                            yaxis: {title: 'Throughput (Mbps)'},
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        });
+                        
+                        return;
+                    }
+                    
+                    logDebug(`Received UE data for UE ${ueId} in cell ${cellId}`);
+                    document.getElementById('no-ue-message').style.display = 'none';
+                    
+                    // Update the UE metrics table
+                    const metrics = data.metrics;
+                    if (metrics && Object.keys(metrics).length > 0) {
+                        const metricsBody = document.getElementById('ue-metrics-body');
+                        let tableHtml = '';
+                        
+                        // Organize metrics into two columns
+                        const allMetrics = Object.entries(metrics);
+                        const rowCount = Math.ceil(allMetrics.length / 2);
+                        
+                        for (let i = 0; i < rowCount; i++) {
+                            tableHtml += '<tr>';
+                            
+                            // Column 1
+                            if (i < allMetrics.length) {
+                                const [key, value] = allMetrics[i];
+                                tableHtml += `
+                                    <td><strong>${key}</strong></td>
+                                    <td>${typeof value === 'number' ? formatNumber(value) : value}</td>
+                                `;
+                            } else {
+                                tableHtml += '<td></td><td></td>';
+                            }
+                            
+                            // Column 2
+                            const secondIdx = i + rowCount;
+                            if (secondIdx < allMetrics.length) {
+                                const [key, value] = allMetrics[secondIdx];
+                                tableHtml += `
+                                    <td><strong>${key}</strong></td>
+                                    <td>${typeof value === 'number' ? formatNumber(value) : value}</td>
+                                `;
+                            } else {
+                                tableHtml += '<td></td><td></td>';
+                            }
+                            
+                            tableHtml += '</tr>';
+                        }
+                        
+                        metricsBody.innerHTML = tableHtml;
+                        document.getElementById('ue-metrics-table').style.display = 'table';
+                    } else {
+                        document.getElementById('ue-metrics-table').style.display = 'none';
+                    }
+                    
+                    // Update the UE throughput charts
+                    updateUeChartTitles(cellId, ueId, false);
+                    
+                    if (data.time_points && data.time_points.length > 0) {
+                        // DL Chart
+                        Plotly.react('ue-dl-chart', [{
+                            x: data.time_points,
+                            y: data.dl_values,
+                            mode: 'lines+markers',
+                            name: 'UE Downlink',
+                            line: {color: 'blue'}
+                        }], {
+                            title: `UE ${ueId} Downlink Throughput (Cell ${cellId})`,
+                            xaxis: {title: 'Time (seconds)'},
+                            yaxis: {title: 'Throughput (Mbps)'},
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        });
+                        
+                        // UL Chart
+                        Plotly.react('ue-ul-chart', [{
+                            x: data.time_points,
+                            y: data.ul_values,
+                            mode: 'lines+markers',
+                            name: 'UE Uplink',
+                            line: {color: 'green'}
+                        }], {
+                            title: `UE ${ueId} Uplink Throughput (Cell ${cellId})`,
+                            xaxis: {title: 'Time (seconds)'},
+                            yaxis: {title: 'Throughput (Mbps)'},
+                            margin: { t: 40, b: 40, l: 60, r: 10 },
+                            hovermode: 'closest'
+                        });
+                    }
+                    
+                    // Update the last update time
+                    document.getElementById('ue-last-update').innerHTML = 'Last Updated: ' + new Date().toLocaleTimeString();
+                })
+                .catch(error => {
+                    logDebug(`Error updating UE chart: ${error.message}`);
+                    document.getElementById('no-ue-message').style.display = 'block';
+                    document.getElementById('ue-metrics-table').style.display = 'none';
+                });
+        }
+        
+        // Initialize the charts
+        logDebug("Initializing charts...");
+        
+        // Initialize global objects for chart references
+        window.combinedTabCharts = {};
+        window.l1TabChart = null;
+        
+        // Initialize the cell selector
+        initializeCellSelector();
+        
+        // Initialize the UE selector
+        initializeUeSelector();
+        
+        // Initial empty charts
+        Plotly.newPlot('du-dl-chart', [{x: [], y: [], mode: 'lines+markers', name: 'Downlink Throughput', line: {color: 'blue'}}], {
+            title: 'Downlink Cell Throughput',
+            xaxis: {title: 'Time (seconds)'},
+            yaxis: {title: 'Throughput (Mbps)'},
+            margin: { t: 40, b: 40, l: 60, r: 10 },
+            hovermode: 'closest'
+        }).then(function(gd) {
+            window.combinedTabCharts.duDlChart = gd;
+        });
+        
+        Plotly.newPlot('du-ul-chart', [{x: [], y: [], mode: 'lines+markers', name: 'Uplink Throughput', line: {color: 'green'}}], {
+            title: 'Uplink Cell Throughput',
+            xaxis: {title: 'Time (seconds)'},
+            yaxis: {title: 'Throughput (Mbps)'},
+            margin: { t: 40, b: 40, l: 60, r: 10 },
+            hovermode: 'closest'
+        }).then(function(gd) {
+            window.combinedTabCharts.duUlChart = gd;
+        });
+        
+        // Create initial empty LA charts
+        Plotly.newPlot('la-dl-cqi-chart', [{x: [], y: [], mode: 'lines+markers', name: 'DL CQI', line: {color: 'blue'}}], {
+            title: 'Downlink Channel Quality Indicator',
+            xaxis: { title: 'Time (seconds)' },
+            yaxis: { title: 'CQI Value' },
+            margin: { t: 40, b: 40, l: 60, r: 10 },
+            hovermode: 'closest'
+        }).then(function(gd) {
+            window.combinedTabCharts.dlCqiChart = gd;
+        });
+        
+        Plotly.newPlot('la-dl-mcs-chart', [{x: [], y: [], mode: 'lines+markers', name: 'DL MCS', line: {color: 'green'}}], {
+            title: 'Downlink Modulation & Coding Scheme',
+            xaxis: { title: 'Time (seconds)' },
+            yaxis: { title: 'MCS Value' },
+            margin: { t: 40, b: 40, l: 60, r: 10 },
+            hovermode: 'closest'
+        }).then(function(gd) {
+            window.combinedTabCharts.dlMcsChart = gd;
+        });
+        
+        Plotly.newPlot('la-dl-ri-chart', [{x: [], y: [], mode: 'lines+markers', name: 'DL Rank', line: {color: 'purple'}}], {
+            title: 'Downlink Rank Indicator',
+            xaxis: { title: 'Time (seconds)' },
+            yaxis: { title: 'Rank Value' },
+            margin: { t: 40, b: 40, l: 60, r: 10 },
+            hovermode: 'closest'
+        }).then(function(gd) {
+            window.combinedTabCharts.dlRiChart = gd;
+        });
+        
+        Plotly.newPlot('la-ul-snr-chart', [{x: [], y: [], mode: 'lines+markers', name: 'UL SNR', line: {color: 'red'}}], {
+            title: 'Uplink Signal-to-Noise Ratio',
+            xaxis: { title: 'Time (seconds)' },
+            yaxis: { title: 'SNR (dB)' },
+            margin: { t: 40, b: 40, l: 60, r: 10 },
+            hovermode: 'closest'
+        }).then(function(gd) {
+            window.combinedTabCharts.ulSnrChart = gd;
+        });
+        
+        Plotly.newPlot('la-ul-mcs-chart', [{x: [], y: [], mode: 'lines+markers', name: 'UL MCS', line: {color: 'orange'}}], {
+            title: 'Uplink Modulation & Coding Scheme',
+            xaxis: { title: 'Time (seconds)' },
+            yaxis: { title: 'MCS Value' },
+            margin: { t: 40, b: 40, l: 60, r: 10 },
+            hovermode: 'closest'
+        }).then(function(gd) {
+            window.combinedTabCharts.ulMcsChart = gd;
+        });
+        
+        Plotly.newPlot('la-ul-ri-chart', [{x: [], y: [], mode: 'lines+markers', name: 'UL Rank', line: {color: 'cyan'}}], {
+            title: 'Uplink Rank Indicator',
+            xaxis: { title: 'Time (seconds)' },
+            yaxis: { title: 'Rank Value' },
+            margin: { t: 40, b: 40, l: 60, r: 10 },
+            hovermode: 'closest'
+        }).then(function(gd) {
+            window.combinedTabCharts.ulRiChart = gd;
+        });
+        
+        // Create initial empty UE charts
+        Plotly.newPlot('ue-dl-chart', [{x: [], y: [], mode: 'lines+markers', name: 'UE Downlink', line: {color: 'blue'}}], {
+            title: 'UE Downlink Throughput',
+            xaxis: {title: 'Time (seconds)'},
+            yaxis: {title: 'Throughput (Mbps)'},
+            margin: { t: 40, b: 40, l: 60, r: 10 },
+            hovermode: 'closest'
+        });
+        
+        Plotly.newPlot('ue-ul-chart', [{x: [], y: [], mode: 'lines+markers', name: 'UE Uplink', line: {color: 'green'}}], {
+            title: 'UE Uplink Throughput',
+            xaxis: {title: 'Time (seconds)'},
+            yaxis: {title: 'Throughput (Mbps)'},
+            margin: { t: 40, b: 40, l: 60, r: 10 },
+            hovermode: 'closest'
+        });
+        
+        // Initialize L1 chart with hover mode
+        Plotly.newPlot("l1-chart", {"data":[{"line":{"color":"red"},"mode":"lines+markers","name":"L1-DL","x":[],"y":[],"type":"scatter","xaxis":"x","yaxis":"y"},{"line":{"color":"orange"},"mode":"lines+markers","name":"L1-UL","x":[],"y":[],"type":"scatter","xaxis":"x2","yaxis":"y2"},{"line":{"color":"purple"},"mode":"lines+markers","name":"BLER","x":[],"y":[],"type":"scatter","xaxis":"x3","yaxis":"y3"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmapgl":[{"type":"heatmapgl","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"matches":"x3","showticklabels":false,"title":{"text":"Time (seconds)"}},"yaxis":{"anchor":"x","domain":[0.7333333333333334,1.0],"title":{"text":"Downlink Throughput (Mbps)"}},"xaxis2":{"anchor":"y2","domain":[0.0,1.0],"matches":"x3","showticklabels":false,"title":{"text":"Time (seconds)"}},"yaxis2":{"anchor":"x2","domain":[0.3666666666666667,0.6333333333333333],"title":{"text":"Uplink Throughput (Mbps)"}},"xaxis3":{"anchor":"y3","domain":[0.0,1.0],"title":{"text":"Time (seconds)"}},"yaxis3":{"anchor":"x3","domain":[0.0,0.26666666666666666],"title":{"text":"BLER (%)"}},"annotations":[{"font":{"size":16},"showarrow":false,"text":"L1 Downlink Throughput (MU 1)","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"L1 Uplink Throughput (MU 1)","x":0.5,"xanchor":"center","xref":"paper","y":0.6333333333333333,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"L1 BLER (MU 1)","x":0.5,"xanchor":"center","xref":"paper","y":0.26666666666666666,"yanchor":"bottom","yref":"paper"}],"title":{"text":"L1 Throughput Monitoring (MU 1)"},"height":900,"width":1000,"showlegend":true}}, {
+            hovermode: 'closest'
+        }).then(function(gd) {
+            window.l1TabChart = gd;
+            setupL1TabCrosshair();
+        });
+        
+        // Set up the crosshair functionality for the combined tab
+        setupCombinedTabCrosshair();
+        
+        // Initial procmon status check
+        updateProcmonStatus();
+        
+        // Update procmon status every 5 seconds
+        setInterval(updateProcmonStatus, 5000);
+        
+        // Update all charts regularly
+        setInterval(updateCombinedChart, 3000);
+        setInterval(updateL1Chart, 3000);
+        setInterval(updateUeChart, 3000);  // Add UE chart update interval
+        setInterval(updateErrorLogs, 300000); // Update error logs every 5 minutes
+        setInterval(updateServerInfo, 1800000); // Update server info every 30 minutes
+        setInterval(initializeUeSelector, 5000); // Update UE selector every 5 seconds to refresh UE list
+        
+        // Initial updates
+        updateCombinedChart();
+        updateL1Chart();
+        updateUeChart();  // Add initial UE chart update
+        updateErrorLogs();
+        updateServerInfo();
+        
+        logDebug("Setup complete. Charts will update every 3 seconds, procmon status every 5 seconds.");
+    </script>
+</body>
+</html>

@@ -381,8 +381,8 @@
                     <div class="session-ip">${ip} <span class="tooltip">?<span class="tooltiptext">PID: ${session.pid}</span></span></div>
                     <div class="session-info">Started: ${formattedDate}</div>
                     <div class="session-actions">
-                        <button class="view-btn" onclick="viewSession('${cleanIp}')">View Dashboard</button>
-                        <button class="end-btn" onclick="endSession('${ip}', ${session.pid})">End Session</button>
+                        <button onclick="viewSession('${cleanIp}')" class="view-btn">View Dashboard</button>
+                        <button onclick="endSession('${ip}', ${session.pid})" class="end-btn">End Session</button>
                     </div>
                 `;
                 
@@ -391,8 +391,11 @@
         }
         
         function viewSession(cleanIp) {
+            // Use the same server's URL with the dashboard path appended
+            const dashboardUrl = `${window.location.origin}/dashboard/${cleanIp}/cell_throughput_chart_${cleanIp}.html`;
+            
             // Open the dashboard for this session in a new tab
-            window.open(`http://localhost:8000/${cleanIp}/cell_throughput_chart_${cleanIp}.html`, '_blank');
+            window.open(dashboardUrl, '_blank');
         }
         
         function endSession(ip, pid) {

@@ -16,7 +16,9 @@ import re  # Add this import at the top if it's not already there
 import json  # Make sure json is imported
 import shutil  # Add this for file operations
 
-ip="172.30.20.190"
+start_time = time.time()  # Record script start time for relative timestamps
+
+ip="172.27.186.56"
 
 # Initialize base directory and IP-specific directory
 output_dir = os.path.dirname(os.path.abspath(__file__))
@@ -265,7 +267,7 @@ def update_l1_data():
     # Get the time information from L1 logs
     time_info = bash_command(ssh, f"cat /workspace/logs/{l1_log} | grep -i 'Time:' | tail -n 1")
     l1_time_str = None
-    
+    total_seconds = None
     if time_info and time_info[0]:
         try:
             # Extract time from "==== l1app [Time:    2Hr 19Min  0Sec ]"
@@ -1422,84 +1424,7 @@ def create_chart():
     else:
         print(f"[INFO] Using existing chart HTML at {chart_path}")
     
-    # Start an HTTP server to serve files and avoid CORS issues
-    PORT = 8000
-    
-    print(f"[DEBUG] Starting HTTP server on port {PORT}")
-    
-    # Custom HTTP request handler to allow CORS and handle POST requests
-    class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
-        def end_headers(self):
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
-            return super(CORSHTTPRequestHandler, self).end_headers()
-        
-        def do_OPTIONS(self):
-            """Handle OPTIONS requests for CORS preflight"""
-            self.send_response(200)
-            self.end_headers()
-            
-        def do_POST(self):
-            """Handle POST requests to update JSON files"""
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            
-            try:
-                # Check which file is being updated and update in the IP-specific directory
-                if self.path == f"/ue_selection_{clean_ip}.json":
-                    with open(os.path.join(ip_dir, f"ue_selection_{clean_ip}.json"), 'wb') as f:
-                        f.write(post_data)
-                    print(f"[INFO] Updated ue_selection_{clean_ip}.json via POST")
-                    
-                elif self.path == f"/cell_selection_{clean_ip}.json":
-                    with open(os.path.join(ip_dir, f"cell_selection_{clean_ip}.json"), 'wb') as f:
-                        f.write(post_data)
-                    print(f"[INFO] Updated cell_selection_{clean_ip}.json via POST")
-                
-                # Send success response
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "success"}).encode())
-                
-            except Exception as e:
-                print(f"[ERROR] Error processing POST request: {str(e)}")
-                # Send error response
-                self.send_response(500)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode())
-        
-        def log_message(self, format, *args):
-            # Safely format the log message regardless of number of arguments
-            try:
-                msg = format % args if args else format
-                print(f"[HTTP Server] {msg}")
-            except Exception as e:
-                print(f"[HTTP Server] Error logging message: {e}")
-                print(f"[HTTP Server] Format: {format}, Args: {args}")
-    
-    # Start the HTTP server in a separate thread
-    def start_http_server():
-        os.chdir(output_dir)  # Change to the directory with our files
-        with socketserver.TCPServer(("", PORT), CORSHTTPRequestHandler) as httpd:
-            print(f"HTTP Server started at http://localhost:{PORT}")
-            httpd.serve_forever()
-    
-    # Start HTTP server thread
-    http_server_thread = threading.Thread(target=start_http_server)
-    http_server_thread.daemon = True
-    http_server_thread.start()
-    
-    # Give the server a moment to start
-    time.sleep(1)
-    
-    # Open the chart in a web browser using HTTP instead of file protocol
-    webbrowser.open(f'http://localhost:{PORT}/{clean_ip}/{chart_filename}')
-    
-    # The update process needs to run in separate threads for both data types
+    # Start the update process in separate threads for both data types
     def update_du_chart():
         global time_points, dl_values, ul_values, ip_dir, clean_ip
         last_dl_value = None
@@ -1734,7 +1659,7 @@ def create_chart():
             'dl_ri': None,
             'ul_snr': None,
             'ul_mcs': None,
-            'ul_ri': None
+            'ul_ri': None,
         }
         last_cell_id = None
         
@@ -1756,13 +1681,6 @@ def create_chart():
                 except (FileNotFoundError, json.JSONDecodeError):
                     # Use default if file doesn't exist or is invalid
                     current_cell_id = default_cell_id
-                    # Recreate the file with default values
-                    with open(os.path.join(ip_dir, f"cell_selection_{clean_ip}.json"), 'w') as f:
-                        json.dump({
-                            'selected_cell': default_cell_id,
-                            'timestamp': time.time()
-                        }, f)
-                        print(f"[INFO] Recreated missing cell_selection_{clean_ip}.json with default cell {default_cell_id}")
                 
                 # Check if cell ID changed
                 cell_id_changed = last_cell_id != current_cell_id
@@ -2150,8 +2068,9 @@ def update_ue_info():
                 try:
                     with open(os.path.join(ip_dir, f"du_chart_data_{clean_ip}.json"), 'r') as f:
                         du_data = json.load(f)
-                        if 'num_ue_values' in du_data and du_data['num_ue_values']:
-                            num_ue = du_data['num_ue_values'][-1]  # Get the latest value
+                        if 'current_time' in du_data:
+                            current_time = du_data['current_time']
+                            num_ue = du_data.get('num_ue_values', [0])[-1]  # Get the latest value
                             print(f"[DEBUG][update_ue_info] Got num_ue={num_ue} from DU data")
                 except (FileNotFoundError, json.JSONDecodeError, KeyError):
                     # Try to get it directly from the update_data function
@@ -2286,7 +2205,7 @@ def monitor_ue_count():
                     }, f)
                 print(f"[INFO] Updated UE counts: {current_counts}")
                 last_counts = current_counts
-            
+        
         except Exception as e:
             print(f"[ERROR] Failed to monitor UE count: {e}")
             import traceback
@@ -2299,4 +2218,16 @@ def monitor_ue_count():
 if __name__ == "__main__":
     create_chart()
 
+# This would be in your start.py file
+# When saving dashboard files, use this structure:
+output_dir = os.path.join(script_dir, ip.replace('.', '_'))
+os.makedirs(output_dir, exist_ok=True)
+
+# Save your dashboard HTML files to this directory
+dashboard_file_path = os.path.join(output_dir, f"cell_throughput_chart_{ip.replace('.', '_')}.html")
+with open(dashboard_file_path, 'w') as f:
+    f.write(html_content)
+
+print(f"[INFO] Dashboard file saved to {dashboard_file_path}")
+print(f"[INFO] Access your dashboard at: http://[server-address]:{PORT}/dashboard/{clean_ip}/cell_throughput_chart_{clean_ip}.html")
 
