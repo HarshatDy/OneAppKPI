@@ -241,7 +241,7 @@
                 showMessage("Server might not be running. Please restart the setup application.", "error");
             };
             // Add a timestamp to prevent caching
-            img.src = "http://localhost:8080/ping?" + new Date().getTime();
+            img.src = tServerBaseUrl() + "/ping?" + new Date().getTime();
         };
 
         function startMonitoring() {
@@ -262,7 +262,7 @@
             // Instead of using fetch, we'll use a form submission to a server endpoint
             const form = document.createElement('form');
             form.method = 'POST';
-            form.action = 'http://localhost:8080/setup';
+            form.action = getServerBaseUrl() + '/setup'; // Use the server's base URL
             form.target = 'hidden-frame'; // Submit to the hidden iframe
             
             const input = document.createElement('input');
@@ -341,7 +341,7 @@
             sessionsList.innerHTML = '<div class="loader" style="display:block;"></div>';
             
             // Make a request to get active sessions
-            fetch('http://localhost:8080/active_sessions')
+            fetch(getServerBaseUrl() + '/active_sessions')
                 .then(response => response.json())
                 .then(data => {
                     displayActiveSessions(data);
@@ -398,13 +398,18 @@
             window.open(dashboardUrl, '_blank');
         }
         
+        function getServerBaseUrl() {
+            // Return the current origin (protocol, hostname, port)
+            return window.location.origin;
+        }
+
         function endSession(ip, pid) {
             if (!confirm(`Are you sure you want to end the monitoring session for ${ip}?`)) {
                 return;
             }
             
             // Make a request to terminate the session
-            fetch('http://localhost:8080/end_session', {
+            fetch(getServerBaseUrl() + '/end_session', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
