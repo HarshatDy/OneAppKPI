@@ -18,7 +18,7 @@ import shutil  # Add this for file operations
 
 start_time = time.time()  # Record script start time for relative timestamps
 
-ip="172.27.186.56"
+ip="172.27.21.27"
 
 # Initialize base directory and IP-specific directory
 output_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1504,8 +1504,8 @@ def create_chart():
                         else:
                             print(f"[DEBUG] DU values unchanged, not adding new point")
                         
-                        # Keep only last 30 data points
-                        if len(time_points) > 30:
+                        # Keep only last 3000 data points
+                        if len(time_points) > 3:
                             time_points.pop(0)
                             dl_values.pop(0)
                             ul_values.pop(0)
@@ -1594,8 +1594,8 @@ def create_chart():
                     else:
                         print(f"[DEBUG] L1 values unchanged, not adding new point")
                     
-                    # Keep only last 30 data points
-                    if len(l1_time_points) > 30:
+                    # Keep only last 3000 data points
+                    if len(l1_time_points) > 5:
                         l1_time_points.pop(0)
                         l1_dl_values.pop(0)
                         l1_ul_values.pop(0)

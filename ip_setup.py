@@ -63,7 +63,7 @@ class SetupRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             # Strip query parameters (anything after ?)
             if '?' in dashboard_file_path:
-                dashboard_file_path = dashboard_file_path.split('?')[0]
+                dashboard_file_path = dashboard_file_path.split('?', 1)[0]
             
             # Clean up the path
             dashboard_file_path = dashboard_file_path.lstrip('/')
@@ -76,38 +76,13 @@ class SetupRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             # Check if file exists
             if os.path.exists(file_path) and os.path.isfile(file_path):
-                # Determine content type
-                content_type = 'application/json' if file_path.endswith('.json') else 'text/html'
-                
-                try:
-                    with open(file_path, 'rb') as f:
-                        content = f.read()
-                    
-                    self.send_response(200)
-                    self.send_header('Content-Type', content_type)
-                    self.send_header('Content-Length', str(len(content)))
-                    self.send_cors_headers()
-                    self.end_headers()
-                    self.wfile.write(content)
-                    return
-                except Exception as e:
-                    print(f"[ERROR] Error reading file {file_path}: {str(e)}")
+                self.serve_file(file_path)
             else:
-                # If JSON file is requested but doesn't exist, return empty JSON object
-                if dashboard_file_path.endswith('.json'):
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.send_cors_headers()
-                    self.end_headers()
-                    self.wfile.write(b'{}')
-                    return
-                else:
-                    print(f"[ERROR] Dashboard file not found: {file_path}")
-                    self.send_response(404)
-                    self.send_header('Content-Type', 'text/html')
-                    self.end_headers()
-                    self.wfile.write(b'<html><body>Dashboard file not found</body></html>')
-                    return
+                self.send_response(404)
+                self.send_header('Content-Type', 'text/plain')
+                self.send_cors_headers()
+                self.end_headers()
+                self.wfile.write(b"Dashboard file not found")
         
         # Handle ping request
         if self.path.startswith('/ping'):
@@ -198,6 +173,40 @@ class SetupRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'text/plain')
             self.end_headers()
             self.wfile.write(b'Internal server error')
+
+    def serve_file(self, file_path):
+        """Serve a file with appropriate content type"""
+        try:
+            with open(file_path, 'rb') as f:
+                content = f.read()
+            
+            # Determine content type based on file extension
+            ext = os.path.splitext(file_path)[1].lower()
+            content_type = {
+                '.html': 'text/html',
+                '.css': 'text/css',
+                '.js': 'application/javascript',
+                '.json': 'application/json',
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.gif': 'image/gif',
+                '.svg': 'image/svg+xml',
+            }.get(ext, 'application/octet-stream')
+            
+            self.send_response(200)
+            self.send_header('Content-Type', content_type)
+            self.send_header('Content-Length', str(len(content)))
+            self.send_cors_headers()
+            self.end_headers()
+            self.wfile.write(content)
+        except Exception as e:
+            print(f"[ERROR] Failed to serve file {file_path}: {str(e)}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'text/plain')
+            self.send_cors_headers()
+            self.end_headers()
+            self.wfile.write(f"Error serving file: {str(e)}".encode())
 
     def send_cors_headers(self):
         """Add CORS headers to the response"""
@@ -304,12 +313,477 @@ class SetupRequestHandler(http.server.SimpleHTTPRequestHandler):
                     'success': False,
                     'message': f'Server error: {str(e)}'
                 }).encode())
+        elif self.path.endswith('parser_config.json') or '_parser_config_' in self.path:
+            try:
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length).decode('utf-8')
+                
+                try:
+                    # Parse the JSON data
+                    parser_config = json.loads(post_data)
+                    
+                    # Extract IP from path if present
+                    clean_ip = None
+                    if '_parser_config_' in self.path:
+                        # Extract clean_ip from path (e.g., /parser_config_172_30_20_190.json)
+                        match = re.search(r'parser_config_([^.]+)\.json', self.path)
+                        if match:
+                            clean_ip = match.group(1)
+                    
+                    if not clean_ip:
+                        # If no IP in path, try to get the current IP
+                        clean_ip = self.get_current_ip().replace('.', '_')
+                    
+                    # Create the parser_config file in the IP-specific directory
+                    ip_dir = os.path.join(script_dir, clean_ip)
+                    os.makedirs(ip_dir, exist_ok=True)
+                    
+                    parser_config_file = os.path.join(ip_dir, f"parser_config_{clean_ip}.json")
+                    
+                    # Write the config to a file for processing by start.py
+                    with open(parser_config_file, 'w') as f:
+                        json.dump(parser_config, f)
+                    
+                    # Send immediate acknowledge response
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_cors_headers()
+                    self.end_headers()
+                    
+                    ack_response = {
+                        'success': True,
+                        'message': 'Parser configuration received, processing started',
+                        'parser_type': parser_config.get('parser_type', 'unknown')
+                    }
+                    
+                    self.wfile.write(json.dumps(ack_response).encode())
+                    
+                    print(f"[INFO] Received parser configuration for {parser_config.get('parser_type', 'unknown')}")
+                    
+                except json.JSONDecodeError:
+                    self.send_response(400)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_cors_headers()
+                    self.end_headers()
+                    
+                    error_response = {
+                        'success': False,
+                        'message': 'Invalid JSON format in parser configuration'
+                    }
+                    
+                    self.wfile.write(json.dumps(error_response).encode())
+                    
+            except Exception as e:
+                print(f"[ERROR] Error handling parser configuration: {str(e)}")
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.send_cors_headers()
+                self.end_headers()
+                
+                error_response = {
+                    'success': False,
+                    'message': f'Server error: {str(e)}'
+                }
+                
+                self.wfile.write(json.dumps(error_response).encode())
+        # Add handler for dashboard POST requests
+        elif self.path.startswith(DASHBOARD_PATH):
+            # Extract the path after /dashboard
+            dashboard_file_path = self.path[len(DASHBOARD_PATH):]
+            
+            # Clean up the path
+            dashboard_file_path = dashboard_file_path.lstrip('/')
+            
+            # Construct the absolute file path using os.path.join for proper slashes
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(script_dir, dashboard_file_path)
+            
+            print(f"[DEBUG] POST request for dashboard file: {file_path}")
+            
+            # Handle special case for the PM parser endpoint
+            if dashboard_file_path.endswith('/run_pm_parser'):
+                self.handle_pm_parser()
+                return
+            
+            # Handle JSON file updates from the dashboard
+            if file_path.endswith('.json'):
+                self.handle_dashboard_json_update(file_path)
+                return
+                
+            # Default response for unhandled POST paths
+            self.send_response(404)
+            self.send_header('Content-Type', 'text/plain')
+            self.send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b'Endpoint not found')
         else:
             self.send_response(404)
             self.send_header('Content-Type', 'text/html')
             self.end_headers()
             self.wfile.write(b'<html><body>Not found</body></html>')
     
+    def handle_dashboard_json_update(self, file_path):
+        """Handle updating JSON files from dashboard POST requests"""
+        try:
+            # Get content length to read the POST data
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            # Write the data to the file
+            with open(file_path, 'wb') as f:
+                f.write(post_data)
+            
+            print(f"[INFO] Updated dashboard JSON file: {file_path}")
+            
+            # Send successful response
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({'status': 'success'}).encode())
+        except Exception as e:
+            print(f"[ERROR] Failed to update dashboard JSON file {file_path}: {str(e)}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'status': 'error',
+                'message': f"Error updating file: {str(e)}"
+            }).encode())
+    
+    def handle_pm_parser(self):
+        """Handle the PM parser endpoint for the dashboard"""
+        try:
+            # Get content length to read the POST data
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(post_data)
+            
+            # Extract parameters from request
+            server_path = data.get('serverPath', '/workspace/O-RAN/O-GNB/PM/')
+            
+            # Use the provided IP address if included in the request, otherwise use the current monitoring IP
+            provided_ip = data.get('ipAddress', '')
+            if provided_ip and self.is_valid_ip(provided_ip):
+                ip_address = provided_ip
+            else:
+                # Get the current IP address from start.py if none provided
+                ip_address = self.get_current_ip()
+                print(f"[INFO] Using current monitored IP address: {ip_address}")
+                
+            setup_name = data.get('setupName', f"{ip_address}_{int(time.time())}_PM")
+            
+            # Create local path for storing PM results in the IP-specific directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            clean_ip = ip_address.replace('.', '_')
+            ip_dir = os.path.join(script_dir, clean_ip)
+            pm_results_dir = os.path.join(ip_dir, 'pm_results', setup_name)
+            
+            # Create the directory if it doesn't exist
+            os.makedirs(pm_results_dir, exist_ok=True)
+            print(f"[INFO] Created local PM results directory: {pm_results_dir}")
+            
+            # Initialize the HTML response - we'll update this as we go
+            html_response = f"""
+            <h3>PM Parsing Results</h3>
+            <p>PM files being copied from {ip_address}:{server_path} to: {pm_results_dir}</p>
+            <div class="progress-log">
+            """
+            
+            # Copy PM files from server to local directory
+            copied_files = []
+            file_links = []
+            
+            try:
+                # Import SSH functions
+                from SIT_SERVER_SPACE import ssh_login, bash_command
+                
+                # Connect to SSH
+                html_response += f"<p>Connecting to {ip_address} via SSH...</p>"
+                ssh = ssh_login(ip_address)
+                
+                if ssh:
+                    html_response += f"<p>SSH connection established.</p>"
+                    
+                    # List PM files
+                    html_response += f"<p>Listing files in {server_path}...</p>"
+                    file_list_cmd = bash_command(ssh, f"ls -1 {server_path}")
+                    
+                    if file_list_cmd and file_list_cmd[0]:
+                        files = file_list_cmd[0].splitlines()
+                        html_response += f"<p>Found {len(files)} files in {server_path}</p>"
+                        
+                        # Create a files.txt in the results directory to list all the files copied
+                        with open(os.path.join(pm_results_dir, "files.txt"), 'w') as list_file:
+                            list_file.write(f"PM files copied from {server_path} on {ip_address} at {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                        
+                        # Copy each file
+                        html_response += f"<p>Starting file copy process:</p><ul>"
+                        
+                        for file in files:
+                            if file.strip():
+                                remote_file_path = os.path.join(server_path, file).replace('\\', '/')
+                                local_file_path = os.path.join(pm_results_dir, file)
+                                
+                                # Use SCP or SFTP to copy file
+                                try:
+                                    import paramiko
+                                    sftp = ssh.open_sftp()
+                                    html_response += f"<li>Copying {file}... "
+                                    sftp.get(remote_file_path, local_file_path)
+                                    sftp.close()
+                                    copied_files.append(file)
+                                    print(f"[INFO] Copied {remote_file_path} to {local_file_path}")
+                                    
+                                    # Log success
+                                    html_response += f"<span style='color:green'>Success</span></li>"
+                                    
+                                    # Append to the files list
+                                    with open(os.path.join(pm_results_dir, "files.txt"), 'a') as list_file:
+                                        list_file.write(f"{file}\n")
+                                        
+                                except Exception as copy_error:
+                                    print(f"[ERROR] Failed to copy {remote_file_path}: {str(copy_error)}")
+                                    html_response += f"<span style='color:red'>Failed: {str(copy_error)}</span></li>"
+                                    
+                                    # Also log the error to the files list
+                                    with open(os.path.join(pm_results_dir, "files.txt"), 'a') as list_file:
+                                        list_file.write(f"ERROR copying {file}: {str(copy_error)}\n")
+                        
+                        html_response += f"</ul><p>Copied {len(copied_files)} files successfully.</p>"
+                    
+                        # Now run PM parser on the copied files
+                        try:
+                            # Path to the PM parser script
+                            parser_script = os.path.join(script_dir, 'pm-counters-parser.py')
+                            
+                            # Use the subprocess module to run the PM parser
+                            import subprocess
+                            import sys
+                            
+                            # Get the Python executable that's running this script
+                            python_exe = sys.executable
+                            
+                            html_response += f"<p>Starting PM Parser...</p><pre>"
+                            
+                            # Run the PM parser with the downloaded files, passing the output directory
+                            process = subprocess.Popen(
+                                [python_exe, parser_script, pm_results_dir, setup_name, pm_results_dir],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True
+                            )
+                            
+                            # Capture output in real-time
+                            stdout_lines = []
+                            stderr_lines = []
+                            
+                            # Process stdout in real-time
+                            for line in iter(process.stdout.readline, ''):
+                                stdout_lines.append(line)
+                                print(f"[PM-PARSER] {line.strip()}")
+                                html_response += line
+                                
+                            # Process stderr in real-time
+                            for line in iter(process.stderr.readline, ''):
+                                stderr_lines.append(line)
+                                print(f"[PM-PARSER-ERR] {line.strip()}")
+                                html_response += f"<span style='color:red'>{line}</span>"
+                            
+                            # Wait for process to complete and get return code
+                            return_code = process.wait()
+                            
+                            # Close output streams
+                            process.stdout.close()
+                            process.stderr.close()
+                            
+                            stdout = ''.join(stdout_lines)
+                            stderr = ''.join(stderr_lines)
+                            
+                            html_response += "</pre>"
+                            
+                            # Check if process was successful
+                            if return_code == 0:
+                                print(f"[INFO] PM parser executed successfully")
+                                print(f"[INFO] Output: {stdout}")
+                                html_response += "<p style='color:green'>PM Parser completed successfully!</p>"
+                                
+                                # Write the parser output to a log file
+                                with open(os.path.join(pm_results_dir, "parser_output.log"), 'w') as f:
+                                    f.write(stdout)
+                                    
+                                # Find all CSV files generated by the parser
+                                csv_files = []
+                                for file in os.listdir(pm_results_dir):
+                                    if file.endswith('.csv'):
+                                        csv_files.append(file)
+                                        
+                                # Create list of downloadable links
+                                file_links = []
+                                for csv_file in csv_files:
+                                    # Construct relative URL
+                                    download_url = f"/dashboard/{clean_ip}/pm_results/{setup_name}/{csv_file}"
+                                    file_links.append({
+                                        'filename': csv_file,
+                                        'url': download_url,
+                                        'size': os.path.getsize(os.path.join(pm_results_dir, csv_file))
+                                    })
+                                        
+                            else:
+                                print(f"[ERROR] PM parser failed with return code {return_code}")
+                                print(f"[ERROR] Error output: {stderr}")
+                                html_response += f"<p style='color:red'>PM Parser failed with return code {return_code}</p>"
+                                
+                                # Write the error to a log file
+                                with open(os.path.join(pm_results_dir, "parser_error.log"), 'w') as f:
+                                    f.write(f"Return code: {return_code}\n\n")
+                                    f.write(f"Standard output:\n{stdout}\n\n")
+                                    f.write(f"Error output:\n{stderr}")
+                                        
+                        except Exception as parser_error:
+                            print(f"[ERROR] Failed to run PM parser: {str(parser_error)}")
+                            import traceback
+                            traceback_str = traceback.format_exc()
+                            html_response += f"<p style='color:red'>Failed to run PM parser: {str(parser_error)}</p>"
+                            html_response += f"<pre style='color:red'>{traceback_str}</pre>"
+                            
+                            # Write the error to a log file
+                            with open(os.path.join(pm_results_dir, "parser_exception.log"), 'w') as f:
+                                f.write(f"Exception: {str(parser_error)}\n\n")
+                                f.write(traceback_str)
+                                        
+                        # Write a summary of CSV files found
+                        if 'csv_files' in locals() and csv_files:
+                            html_response += f"<p>Generated {len(csv_files)} CSV files:</p>"
+                            with open(os.path.join(pm_results_dir, "csv_files.txt"), 'w') as f:
+                                f.write(f"CSV files generated by PM parser:\n\n")
+                                for csv_file in csv_files:
+                                    file_size = os.path.getsize(os.path.join(pm_results_dir, csv_file))
+                                    f.write(f"{csv_file} ({file_size} bytes)\n")
+                        else:
+                            html_response += "<p>No CSV files were generated.</p>"
+                            with open(os.path.join(pm_results_dir, "csv_files.txt"), 'w') as f:
+                                f.write("No CSV files were generated by the PM parser.\n")
+                                
+                        # =========== CLEANUP PROCESS ===========
+                        # Now that we have generated the CSV files and created the links,
+                        # let's clean up the PM XML files that were downloaded
+                        html_response += "<p>Starting cleanup of PM XML files...</p>"
+                        
+                        # Count XML files before deletion
+                        xml_files = [f for f in os.listdir(pm_results_dir) if f.endswith('.xml')]
+                        xml_file_count = len(xml_files)
+                        
+                        if xml_file_count > 0:
+                            # Create a backup directory for XML files
+                            xml_backup_dir = os.path.join(pm_results_dir, "xml_backup")
+                            os.makedirs(xml_backup_dir, exist_ok=True)
+                            
+                            # Move XML files to backup directory
+                            moved_count = 0
+                            for xml_file in xml_files:
+                                try:
+                                    source_path = os.path.join(pm_results_dir, xml_file)
+                                    dest_path = os.path.join(xml_backup_dir, xml_file)
+                                    
+                                    # Use shutil.move to move the file
+                                    import shutil
+                                    shutil.move(source_path, dest_path)
+                                    moved_count += 1
+                                except Exception as move_error:
+                                    print(f"[ERROR] Failed to move XML file {xml_file}: {str(move_error)}")
+                                    html_response += f"<p style='color:orange'>Warning: Failed to move {xml_file}: {str(move_error)}</p>"
+                            
+                            # Report success
+                            if moved_count == xml_file_count:
+                                html_response += f"<p style='color:green'>Cleanup complete: Moved all {moved_count} XML files to backup directory</p>"
+                            else:
+                                html_response += f"<p style='color:orange'>Partial cleanup: Moved {moved_count} of {xml_file_count} XML files to backup directory</p>"
+                            
+                            # Add cleanup summary to files.txt
+                            with open(os.path.join(pm_results_dir, "files.txt"), 'a') as list_file:
+                                list_file.write(f"\nCleanup Summary:\n")
+                                list_file.write(f"XML files found: {xml_file_count}\n")
+                                list_file.write(f"XML files moved to backup: {moved_count}\n")
+                                list_file.write(f"Backup directory: {xml_backup_dir}\n")
+                        else:
+                            html_response += "<p>No XML files found to clean up</p>"
+                            
+                    else:
+                        print(f"[ERROR] No files found in {server_path} on {ip_address}")
+                        html_response += f"<p style='color:red'>No files found in {server_path} on {ip_address}</p>"
+                        # Create an error report
+                        with open(os.path.join(pm_results_dir, "error.txt"), 'w') as f:
+                            f.write(f"No files found in {server_path} on {ip_address}\n")
+                            f.write(f"Command output: {file_list_cmd[0] if file_list_cmd else 'No output'}\n")
+                else:
+                    print(f"[ERROR] Failed to establish SSH connection to {ip_address}")
+                    html_response += f"<p style='color:red'>Failed to establish SSH connection to {ip_address}</p>"
+                    # Create an error report
+                    with open(os.path.join(pm_results_dir, "error.txt"), 'w') as f:
+                        f.write(f"Failed to establish SSH connection to {ip_address}\n")
+            except Exception as ssh_error:
+                print(f"[ERROR] Error during SSH file copy: {str(ssh_error)}")
+                import traceback
+                traceback_str = traceback.format_exc()
+                html_response += f"<p style='color:red'>Error during SSH file copy: {str(ssh_error)}</p>"
+                html_response += f"<pre style='color:red'>{traceback_str}</pre>"
+                
+                # Create an error report
+                with open(os.path.join(pm_results_dir, "error.txt"), 'w') as f:
+                    f.write(f"Error during SSH file copy: {str(ssh_error)}\n")
+                    f.write(traceback_str)
+            
+            # Close the progress log div
+            html_response += "</div>"
+            
+            # Generate response with relative path to access results
+            dashboard_path = f"/dashboard/{clean_ip}/pm_results/{setup_name}/"
+            
+            # Add links to CSV files if they exist
+            if 'file_links' in locals() and file_links:
+                html_response += "<h4>Generated CSV Files:</h4><ul>"
+                for file_link in file_links:
+                    html_response += f"""<li><a href="{file_link['url']}" download>{file_link['filename']}</a> ({file_link['size']} bytes)</li>"""
+                html_response += "</ul>"
+            
+            # Add timestamp
+            html_response += f"<p><small>Processed at: {time.strftime('%Y-%m-%d %H:%M:%S')}</small></p>"
+            
+            # Send successful response
+            response = {
+                'success': True,
+                'outputPath': pm_results_dir,
+                'results': html_response,
+                'dashboardPath': dashboard_path,
+                'numFiles': len(copied_files) if 'copied_files' in locals() else 0,
+                'csvFiles': file_links if 'file_links' in locals() else []
+            }
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode())
+            
+            print(f"[INFO] Handled PM parser request for IP: {ip_address}")
+        except Exception as e:
+            print(f"[ERROR] Failed to handle PM parser request: {str(e)}")
+            import traceback
+            error_traceback = traceback.format_exc()
+            print(error_traceback)
+            
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'success': False,
+                'error': f"Error processing PM parser request: {str(e)}",
+                'details': error_traceback
+            }).encode())
+
     def do_OPTIONS(self):
         """Handle preflight CORS requests"""
         self.send_response(200)
@@ -626,7 +1100,28 @@ class SetupRequestHandler(http.server.SimpleHTTPRequestHandler):
             print(f"[ERROR] Error ending monitoring session: {str(e)}")
             return {'success': False, 'message': f'Server error: {str(e)}'}
 
-    # Add this function to SetupRequestHandler class
+    # Add this helper method to get the current IP
+    def get_current_ip(self):
+        """Get the current IP address from start.py"""
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            start_py_path = os.path.join(script_dir, 'start.py')
+            
+            with open(start_py_path, 'r') as file:
+                content = file.read()
+                
+            # Use regex to find the IP assignment
+            match = re.search(r'ip\s*=\s*"([^"]+)"', content)
+            if match:
+                return match.group(1)
+            else:
+                print("[WARNING] Could not find IP address in start.py")
+                return "unknown"
+        except Exception as e:
+            print(f"[ERROR] Failed to extract IP from start.py: {str(e)}")
+            return "unknown"
+
+    # Update prepare_ip_directory to include parser output directory
     def ensure_data_dirs_exist(self, ip_address):
         """Makes sure the IP-specific directory exists and contains empty data files"""
         try:
@@ -638,6 +1133,12 @@ class SetupRequestHandler(http.server.SimpleHTTPRequestHandler):
             if not os.path.exists(ip_dir):
                 os.makedirs(ip_dir)
                 print(f"[INFO] Created directory for IP {ip_address}: {ip_dir}")
+            
+            # Create parser_output directory
+            parser_output_dir = os.path.join(ip_dir, 'parser_output')
+            if not os.path.exists(parser_output_dir):
+                os.makedirs(parser_output_dir)
+                print(f"[INFO] Created parser output directory: {parser_output_dir}")
             
             # List of JSON files to ensure exist in the IP directory
             required_files = [
@@ -652,7 +1153,8 @@ class SetupRequestHandler(http.server.SimpleHTTPRequestHandler):
                 f"ue_chart_data_{clean_ip}.json",
                 f"error_logs_{clean_ip}.json",
                 f"server_info_{clean_ip}.json",
-                f"ue_count_{clean_ip}.json"
+                f"ue_count_{clean_ip}.json",
+                f"parser_config_{clean_ip}.json"  # Add this new file
             ]
             
             # Initialize each file if it doesn't exist

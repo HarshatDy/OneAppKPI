@@ -241,7 +241,7 @@
         /* Crosshair tooltip styling */
         .crosshair-tooltip {
             position: absolute;
-            background-color: rgba(0, 0, 0, 0.85);
+            background-color: rgba(0, 0, 0, 0.8);
             color: white;
             padding: 12px 15px;
             border-radius: 6px;
@@ -478,7 +478,7 @@
             align-items: center;
             background-color: #e6f7ff;
             padding: 8px 15px;
-            border-radius: 4px;
+            border-radius: 4px
             border-left: 3px solid #1890ff;
         }
         
@@ -559,6 +559,230 @@
             border-radius: 5px;
             margin: 20px 0;
         }
+        
+        /* Subtabs styling for Parsers tab */
+        .subtab-container {
+            width: 100%;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        
+        .subtab-button {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 8px 15px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-right: 5px;
+            outline: none;
+        }
+        
+        .subtab-button.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #2E7D32;
+        }
+        
+        .subtab-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .subtab-content.active {
+            display: block;
+        }
+        
+        /* Parser area styling */
+        .parser-container {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+        
+        .parser-input {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            font-family: monospace;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            resize: vertical;
+        }
+        
+        .parser-output {
+            width: 100%;
+            height: 350px;
+            padding: 10px;
+            font-family: monospace;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f5f5f5;
+            overflow: auto;
+        }
+        
+        .parser-controls {
+            margin: 10px 0;
+        }
+        
+        .parser-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 15px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        .parser-button:hover {
+            background-color: #45a049;
+        }
+        
+        .parser-button.clear {
+            background-color: #f44336;
+        }
+        
+        .parser-button.clear:hover {
+            background-color: #d32f2f;
+        }
+        
+        .parser-button.copy {
+            background-color: #2196F3;
+        }
+        
+        .parser-button.copy:hover {
+            background-color: #0b7dda;
+        }
+        
+        /* Add styles for CSV file downloads */
+        .csv-files-table {
+            margin-top: 20px;
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .pm-files-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .pm-files-table th, .pm-files-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .pm-files-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .pm-files-table tr:hover {
+            background-color: #f1f1f1;
+        }
+        
+        .file-download-btn {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #2196F3;
+            color: white;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 12px;
+        }
+        
+        .file-download-btn:hover {
+            background-color: #0b7dda;
+        }
+        
+        .parser-loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto 15px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .parser-error {
+            background-color: #ffebee;
+            border: 1px solid #ffcdd2;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .parser-error h4 {
+            color: #c62828;
+            margin-top: 0;
+        }
+        
+        .parser-error pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow: auto;
+            font-size: 12px;
+        }
+
+        .progress-log {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .progress-log p {
+            margin: 5px 0;
+        }
+
+        .progress-log ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+
+        .progress-log li {
+            margin: 2px 0;
+        }
+
+        .progress-log pre {
+            margin: 5px 0;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -572,6 +796,7 @@
         <button class="tab-button" onclick="openTab('l1-tab')">L1 Statistics (MU 1)</button>
         <button class="tab-button" onclick="openTab('err-tab')">OGNB ERR Logs</button>
         <button class="tab-button" onclick="openTab('server-tab')">Server Details</button>
+        <button class="tab-button" onclick="openTab('parsers-tab')">Parsers</button>
     </div>
     
     <div id="combined-tab" class="tab-content active">
@@ -806,6 +1031,53 @@
         <div id="server-last-update" class="logs-last-update">Not updated yet</div>
     </div>
     
+    <!-- New Parsers Tab -->
+    <div id="parsers-tab" class="tab-content">
+        <div class="section-title">O-gNB Log Parsers</div>
+        
+        <!-- Subtabs for different parsers -->
+        <div class="subtab-container">
+            <button class="subtab-button active" onclick="openSubTab('du-parser-tab', 'parsers-tab')">DU Parser</button>
+            <button class="subtab-button" onclick="openSubTab('pm-parser-tab', 'parsers-tab')">PM Parser</button>
+        </div>
+        
+        <!-- DU Parser Subtab -->
+        <div id="du-parser-tab" class="subtab-content active">
+            <h3>DU Log Parser</h3>
+            <div class="parser-container">
+                <div class="parser-instructions">
+                    <p>Paste DU logs below to parse important information.</p>
+                </div>
+                <textarea id="du-parser-input" class="parser-input" placeholder="Paste DU logs here..."></textarea>
+                <div class="parser-controls">
+                    <button id="du-parse-button" class="parser-button" onclick="parseDULogs()">Parse Logs</button>
+                    <button class="parser-button clear" onclick="clearParser('du')">Clear</button>
+                    <button class="parser-button copy" onclick="copyOutput('du')">Copy Results</button>
+                </div>
+                <pre id="du-parser-output" class="parser-output">DU parsing results will appear here...</pre>
+            </div>
+        </div>
+        
+        <!-- PM Parser Subtab -->
+        <div id="pm-parser-tab" class="subtab-content">
+            <h3>Performance Management Parser</h3>
+            <div class="parser-container">
+                <p>Parse PM counter files from the server and generate CSV output.</p>
+                <p>This tool will copy PM counter files from the server and process them to generate CSV reports.</p>
+                
+                <div class="parser-controls">
+                    <button onclick="runPMCountersParser()" class="parser-button">Run PM Parser</button>
+                </div>
+                
+                <div id="pm-parser-output" class="parser-output">
+                    Results will appear here after running the parser.
+                </div>
+            </div>
+        </div>
+        
+        <div id="parsers-last-update" class="logs-last-update">Not used yet</div>
+    </div>
+    
     <div id="debug-info"></div>
     
     <script>
@@ -832,7 +1104,9 @@
             for (i = 0; i < tabButtons.length; i++) {
                 if (tabButtons[i].textContent.includes(tabName === "combined-tab" ? "DU & LA" : 
                     tabName === "l1-tab" ? "L1" : 
-                    tabName === "err-tab" ? "ERR" : "Server")) {
+                    tabName === "err-tab" ? "ERR" : 
+                    tabName === "server-tab" ? "Server" :
+                    tabName === "parsers-tab" ? "Parsers" : "")) {
                     tabButtons[i].className += " active";
                 }
             }
@@ -850,9 +1124,273 @@
             logDebug(`Switched to ${tabName}`);
         }
         
-        // Helper function to format numbers nicely
-        function formatNumber(num) {
-            return num.toFixed(2).replace(/\.00$/, '');
+        // Subtab switching function
+        function openSubTab(subtabName, parentTabName) {
+            var i, subtabContent, subtabButtons;
+            
+            // Make sure parent tab is active
+            if (!document.getElementById(parentTabName).classList.contains('active')) {
+                openTab(parentTabName);
+            }
+            
+            // Hide all subtab contents within the parent tab
+            subtabContent = document.getElementById(parentTabName).getElementsByClassName("subtab-content");
+            for (i = 0; i < subtabContent.length; i++) {
+                subtabContent[i].className = subtabContent[i].className.replace(" active", "");
+            }
+            
+            // Remove "active" class from all subtab buttons within the parent tab
+            subtabButtons = document.getElementById(parentTabName).getElementsByClassName("subtab-button");
+            for (i = 0; i < subtabButtons.length; i++) {
+                subtabButtons[i].className = subtabButtons[i].className.replace(" active", "");
+            }
+            
+            // Show the current subtab and add "active" class to the button
+            document.getElementById(subtabName).className += " active";
+            
+            // Find the button that opens this subtab and add "active" class
+            for (i = 0; i < subtabButtons.length; i++) {
+                if (subtabButtons[i].textContent.includes(subtabName === "du-parser-tab" ? "DU Parser" : "PM Parser")) {
+                    subtabButtons[i].className += " active";
+                }
+            }
+            
+            logDebug(`Switched to subtab ${subtabName} within ${parentTabName}`);
+        }
+        
+        // Parser functions
+        function parseDULogs() {
+            const inputText = document.getElementById('du-parser-input').value.trim();
+            const outputElement = document.getElementById('du-parser-output');
+            
+            if (!inputText) {
+                outputElement.textContent = "Error: No input text provided";
+                return;
+            }
+            
+            try {
+                // Sample DU parsing logic - customize as needed
+                const lines = inputText.split('\n');
+                let results = [];
+                
+                // Extract key information from DU logs
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    
+                    // Check for key patterns
+                    if (line.includes('CELL_ID') || line.includes('cell_id')) {
+                        results.push(`CELL INFO: ${line}`);
+                    }
+                    else if (line.match(/UE|CRNTI|rnti/i)) {
+                        results.push(`UE INFO: ${line}`);
+                    }
+                    else if (line.match(/ERROR|WARN|FAIL/i)) {
+                        results.push(`ERROR/WARNING: ${line}`);
+                    }
+                    else if (line.match(/throughput|tpt|mbps/i)) {
+                        results.push(`THROUGHPUT: ${line}`);
+                    }
+                }
+                
+                if (results.length === 0) {
+                    outputElement.textContent = "No relevant information found in the logs";
+                } else {
+                    outputElement.textContent = "DU PARSER RESULTS:\n" + results.join('\n');
+                }
+                
+                logDebug(`DU Logs parsed, found ${results.length} relevant entries`);
+            } catch (error) {
+                outputElement.textContent = `Error parsing DU logs: ${error.message}`;
+                logDebug(`Error parsing DU logs: ${error.message}`);
+            }
+        }
+        
+        function parsePMLogs() {
+            const inputText = document.getElementById('pm-parser-input').value.trim();
+            const outputElement = document.getElementById('pm-parser-output');
+            
+            if (!inputText) {
+                outputElement.textContent = "Error: No input text provided";
+                return;
+            }
+            
+            try {
+                // Sample PM parsing logic - customize as needed
+                const lines = inputText.split('\n');
+                let results = [];
+                let counters = {};
+                
+                // Extract PM counters
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    
+                    // Look for counter patterns
+                    const counterMatch = line.match(/([A-Za-z0-9_.]+)\s*[:=]\s*([0-9.]+)/);
+                    if (counterMatch) {
+                        const counterName = counterMatch[1];
+                        const counterValue = parseFloat(counterMatch[2]);
+                        counters[counterName] = counterValue;
+                        results.push(`${counterName} = ${counterValue}`);
+                    }
+                    else if (line.match(/throughput|traffic|counter|measurement/i)) {
+                        results.push(`METRIC: ${line}`);
+                    }
+                }
+                
+                // Add summary if counters were found
+                if (Object.keys(counters).length > 0) {
+                    results.unshift("PM COUNTERS SUMMARY:");
+                    
+                    // Calculate some basic statistics if available
+                    if (counters["dl_tpt"] && counters["ul_tpt"]) {
+                        results.unshift(`Total Throughput: ${(counters["dl_tpt"] + counters["ul_tpt"]).toFixed(2)} Mbps`);
+                    }
+                }
+                
+                if (results.length === 0) {
+                    outputElement.textContent = "No relevant PM counters found in the input";
+                } else {
+                    outputElement.textContent = "PM PARSER RESULTS:\n" + results.join('\n');
+                }
+                
+                logDebug(`PM Logs parsed, found ${results.length} relevant entries`);
+            } catch (error) {
+                outputElement.textContent = `Error parsing PM data: ${error.message}`;
+                logDebug(`Error parsing PM data: ${error.message}`);
+            }
+        }
+        
+        // New function to run PM counters parser externally
+        function runPMCountersParser() {
+            const outputElement = document.getElementById('pm-parser-output');
+            outputElement.textContent = "Starting PM counters parser...";
+            
+            // Get the IP address from the current page URL or use the current monitoring IP
+            const urlParams = new URLSearchParams(window.location.search);
+            const ipAddress = urlParams.get('ip') || '';  // Don't set a default, let server use current IP
+            
+            // Create timestamp for the output folder name
+            const now = new Date();
+            const timestamp = now.getFullYear() + 
+                              String(now.getMonth() + 1).padStart(2, '0') + 
+                              String(now.getDate()).padStart(2, '0') + '_' +
+                              String(now.getHours()).padStart(2, '0') + 
+                              String(now.getMinutes()).padStart(2, '0');
+            
+            // Use the IP address in setup name if available, otherwise let server determine it
+            const setupName = ipAddress ? `${ipAddress}_${timestamp}_PM` : `PM_${timestamp}`;
+            
+            // Construct the correct URL for the endpoint
+            const pmParserUrl = getAPIUrl('run_pm_parser');
+            
+            logDebug(`Sending PM parser request to: ${pmParserUrl} (Using ${ipAddress || 'current monitoring IP'})`);
+            
+            // Show spinner while processing
+            outputElement.innerHTML = `
+                <div class="parser-loading">
+                    <div class="spinner"></div>
+                    <p>Copying files from server and running PM parser...</p>
+                    <p>This may take several minutes. Please wait.</p>
+                </div>
+            `;
+            
+            // Make a request to the backend to copy files and run parser
+            fetch(pmParserUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    serverPath: '/workspace/O-RAN/O-GNB/PM/',
+                    ipAddress: ipAddress,  // Send empty string if not in URL, server will use current IP
+                    setupName: setupName
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Display the results with file links
+                    outputElement.innerHTML = data.results;
+                    
+                    // Add a table for easier file access if multiple CSV files exist
+                    if (data.csvFiles && data.csvFiles.length > 0) {
+                        const csvFilesTable = document.createElement('div');
+                        csvFilesTable.className = 'csv-files-table';
+                        csvFilesTable.innerHTML = `
+                            <h4>CSV File Downloads</h4>
+                            <table class="pm-files-table">
+                                <thead>
+                                    <tr>
+                                        <th>Filename</th>
+                                        <th>Size</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.csvFiles.map(file => `
+                                        <tr>
+                                            <td>${file.filename}</td>
+                                            <td>${formatFileSize(file.size)}</td>
+                                            <td>
+                                                <a href="${file.url}" download class="file-download-btn">Download</a>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                        
+                        // Append the table after the results content
+                        outputElement.appendChild(csvFilesTable);
+                    }
+                    
+                    logDebug(`PM parser execution successful: ${data.numFiles} files processed`);
+                } else {
+                    outputElement.innerHTML = `
+                        <div class="parser-error">
+                            <h4>Error Processing PM Files</h4>
+                            <p>${data.error || 'Unknown error occurred'}</p>
+                            <pre>${data.details || ''}</pre>
+                        </div>
+                    `;
+                    logDebug(`PM parser execution error: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                let errorMessage = `Error executing PM parser: ${error.message}`;
+                
+                // Add troubleshooting suggestions
+                errorMessage += `\n\nTroubleshooting suggestions:
+1. Make sure the server application has the PM parser endpoint configured
+2. Check server logs for errors
+3. Contact your system administrator`;
+                    
+                outputElement.innerHTML = `
+                    <div class="parser-error">
+                        <h4>Error Processing PM Files</h4>
+                        <p>${error.message}</p>
+                        <pre>Please check server logs for more details.</pre>
+                        <button onclick="runPMCountersParser()" class="parser-button">Try Again</button>
+                    </div>
+                `;
+                logDebug(`PM parser execution error: ${error.message}`);
+            });
+        }
+        
+        // Helper function to format file sizes
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
         
         // Debug logging function
@@ -878,9 +1416,25 @@
             }
         }
         
+        // Function to get correct URL for API requests
+        function getAPIUrl(endpoint) {
+            // Check if we're being served from a /dashboard path
+            const path = window.location.pathname;
+            const dashboardMatch = path.match(/\/dashboard\/([^\/]+)/);
+            
+            if (dashboardMatch) {
+                // We're in a dashboard context, use the current path structure
+                const ipDirName = dashboardMatch[1]; // This is the IP directory name (e.g. 172_27_21_27)
+                return `${endpoint.replace('{{CLEAN_IP}}', ipDirName)}`;
+            } else {
+                // We're in the root context
+                return endpoint;
+            }
+        }
+        
         // Function to update the procmon status indicator
         function updateProcmonStatus() {
-            fetch('procmon_status_{{CLEAN_IP}}.json?' + new Date().getTime())
+            fetch(getAPIUrl('procmon_status_{{CLEAN_IP}}.json?') + new Date().getTime())
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Network response error: ${response.status}`);
@@ -912,7 +1466,7 @@
         function updateCombinedChart() {
             // Update DU charts
             logDebug("Fetching new DU data...");
-            fetch('du_chart_data_{{CLEAN_IP}}.json?' + new Date().getTime())
+            fetch(getAPIUrl('du_chart_data_{{CLEAN_IP}}.json?') + new Date().getTime())
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Network response error: ${response.status}`);
@@ -996,7 +1550,7 @@
             
             // Update LA charts
             logDebug("Fetching new LA data...");
-            fetch('la_chart_data_{{CLEAN_IP}}.json?' + new Date().getTime())
+            fetch(getAPIUrl('la_chart_data_{{CLEAN_IP}}.json?') + new Date().getTime())
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Network response error: ${response.status}`);
@@ -1140,7 +1694,7 @@
         // Function to fetch L1 data and update chart with DL, UL, BLER
         function updateL1Chart() {
             logDebug("Fetching new L1 data...");
-            fetch('l1_chart_data_{{CLEAN_IP}}.json?' + new Date().getTime())
+            fetch(getAPIUrl('l1_chart_data_{{CLEAN_IP}}.json?') + new Date().getTime())
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Network response error: ${response.status}`);
@@ -1545,12 +2099,10 @@
                             }
                         }
                         
-                        if (closestPoint) {
-                            // Store values based on trace index (0=DL, 1=UL, 2=BLER)
-                            if (i === 0) l1Values.dl = closestPoint.y;
-                            else if (i === 1) l1Values.ul = closestPoint.y;
-                            else if (i === 2) l1Values.bler = closestPoint.y;
-                        }
+                        // Store values based on trace index (0=DL, 1=UL, 2=BLER)
+                        if (i === 0) l1Values.dl = closestPoint.y;
+                        else if (i === 1) l1Values.ul = closestPoint.y;
+                        else if (i === 2) l1Values.bler = closestPoint.y;
                     }
                 }
                 
@@ -1706,7 +2258,7 @@
         
         // Function to update error logs
         function updateErrorLogs() {
-            fetch('error_logs_{{CLEAN_IP}}.json?' + new Date().getTime())
+            fetch(getAPIUrl('error_logs_{{CLEAN_IP}}.json?') + new Date().getTime())
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Network response error: ${response.status}`);
@@ -1776,7 +2328,7 @@
         
         // Function to update server information
         function updateServerInfo() {
-            fetch('server_info_{{CLEAN_IP}}.json?' + new Date().getTime())
+            fetch(getAPIUrl('server_info_{{CLEAN_IP}}.json?') + new Date().getTime())
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Network response error: ${response.status}`);
@@ -1874,7 +2426,7 @@
         
         // Function to initialize the cell selector
         function initializeCellSelector() {
-            fetch('cell_info_{{CLEAN_IP}}.json?' + new Date().getTime())
+            fetch(getAPIUrl('cell_info_{{CLEAN_IP}}.json?') + new Date().getTime())
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Network response error: ${response.status}`);
@@ -1951,7 +2503,7 @@
                 logDebug(`Cell selection changed from Cell ${previousCellId} to Cell ${selectedCell}`);
                 
                 // Save the selection to a file for the backend
-                fetch('cell_selection_{{CLEAN_IP}}.json', {
+                fetch(getAPIUrl('cell_selection_{{CLEAN_IP}}.json'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1979,7 +2531,7 @@
             const ueSelector = document.getElementById('ue-selector');
             ueSelector.innerHTML = '<option value="">Loading UEs...</option>';
             
-            fetch('ue_info_{{CLEAN_IP}}.json?' + new Date().getTime())
+            fetch(getAPIUrl('ue_info_{{CLEAN_IP}}.json?') + new Date().getTime())
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Network response error: ${response.status}`);
@@ -2034,7 +2586,7 @@
                         logDebug(`Added ${filteredUeIds.length} UEs to dropdown for cell ${currentCellId}`);
                         
                         // Get currently selected UE
-                        fetch('ue_selection_{{CLEAN_IP}}.json?' + new Date().getTime())
+                        fetch(getAPIUrl('ue_selection_{{CLEAN_IP}}.json?') + new Date().getTime())
                             .then(response => response.json())
                             .catch(() => ({ selected_ue: null }))
                             .then(selection => {
@@ -2089,7 +2641,7 @@
         
         // Function to update UE selection in the backend
         function updateUeSelection(ueId) {
-            fetch('ue_selection_{{CLEAN_IP}}.json', {
+            fetch(getAPIUrl('ue_selection_{{CLEAN_IP}}.json'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2136,7 +2688,7 @@
             if (!ueSelector || ueSelector.value === "") return;
             
             logDebug("Fetching UE-specific data...");
-            fetch('ue_chart_data_{{CLEAN_IP}}.json?' + new Date().getTime())
+            fetch(getAPIUrl('ue_chart_data_{{CLEAN_IP}}.json?') + new Date().getTime())
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Network response error: ${response.status}`);
@@ -2271,6 +2823,8 @@
                 });
         }
         
+        
+
         // Initialize the charts
         logDebug("Initializing charts...");
         
@@ -2419,3 +2973,4 @@
     </script>
 </body>
 </html>
+
